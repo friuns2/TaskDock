@@ -57,32 +57,35 @@ struct ContentView: View {
                 Image(systemName: "house").resizable().frame(width: 20, height: 20).symbolVariant(.fill)
             }.buttonStyle(.borderless).padding(8)
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack {
-                    ForEach(draggingWindows ?? space.windows, id: \.id) { window in
-                        TaskBarItemView(window: window)
-                            .onDrag({
-                                dragged = window
-                                draggingWindows = [Window](space.windows)
-                                return NSItemProvider(object: String(window.id) as NSString)
-                            }, preview: {
-                                Rectangle().fill(Color.clear)
-                            })
-                            .onDrop(
-                                of: [UTType.plainText],
-                                delegate: ReorderDropDelegate(
-                                    displayId: displayId,
-                                    spaceId: space.id,
-                                    item: window,
-                                    onChangeOrder: onChangeOrder,
-                                    data: $draggingWindows,
-                                    dataa: $space.windows,
-                                    dragged: $dragged)
-                            )
-                    }
-                }.padding(8)
-            }.fadeOutSides()
-                .padding(-8)
+            HStack(spacing: 2) {
+                ForEach(Dictionary(grouping: draggingWindows ?? space.windows.filter { window in
+                    !["com.apple.iChat", "com.microsoft.teams", "com.hnc.Discord", "com.mattermost.desktop"].contains(window.bundleId)
+                }) { $0.bundleId }
+                    .sorted(by: { $0.key < $1.key }), id: \.key) { bundleId, windows in
+                    let firstWindow = windows.first!
+                    TaskBarItemView(window: firstWindow, groupedWindows: windows)
+                        .onDrag({
+                            dragged = firstWindow
+                            draggingWindows = [Window](space.windows)
+                            return NSItemProvider(object: String(firstWindow.id) as NSString)
+                        }, preview: {
+                            Rectangle().fill(Color.clear)
+                        })
+                        .onDrop(
+                            of: [UTType.plainText],
+                            delegate: ReorderDropDelegate(
+                                displayId: displayId,
+                                spaceId: space.id,
+                                item: firstWindow,
+                                onChangeOrder: onChangeOrder,
+                                data: $draggingWindows,
+                                dataa: $space.windows,
+                                dragged: $dragged)
+                        )
+                }
+            }
+            .frame(maxHeight: 36)
+            .padding(.horizontal, 8)
             
             Spacer(minLength: 16)
             
@@ -132,7 +135,7 @@ struct ContentView: View {
             }).buttonStyle(.borderless).padding(8)
 
         }.padding(8)
-            .frame(maxWidth: .infinity, minHeight: 48)
+            .frame(maxWidth: .infinity, minHeight: 40)
             .onReceive(spacePub) { space in
                 if dragged == nil {
                     self.space = space

@@ -20,7 +20,7 @@ class DockWindow: NSWindow {
         self.standardWindowButton(.miniaturizeButton)?.isHidden = true
         self.standardWindowButton(.zoomButton)?.isHidden = true
         
-        let frame = NSRect(x: screenFrame.minX, y: screenFrame.minY, width: screenFrame.width, height: 48)
+        let frame = NSRect(x: screenFrame.minX, y: screenFrame.minY, width: screenFrame.width, height: 40)
             
         setFrame(frame, display: true)
     }

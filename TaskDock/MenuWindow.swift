@@ -28,9 +28,9 @@ class MenuWindow: NSWindow {
     func moveToScreen(withFrame frame: NSRect) {
         let frame = NSRect(
             x: frame.minX,
-            y: frame.origin.y + 48 + 2,
+            y: frame.origin.y + 40 + 2,
             width: 480,
-            height: min(frame.height - 48 - NSStatusBar.system.thickness - 2, 640)
+            height: min(frame.height - 40 - NSStatusBar.system.thickness - 2, 640)
         )
         self.setFrame(frame, display: true)
     }
