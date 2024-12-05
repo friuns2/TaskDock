@@ -17,11 +17,11 @@ class TrayHandler {
         var dockInfo: [String: String] = [:]
         
         var configured = [
-            ("Discord", "com.hnc.Discord"),
+           ("Discord", "com.hnc.Discord"),
             //("Element", "im.riot.app"),
             //("Slack", "com.tinyspeck.slackmacgap"),
-            ("Mattermost", "Mattermost.Desktop"),
-            ("Messages", "com.apple.MobileSMS"),
+         //   ("Mattermost", "Mattermost.Desktop"),
+     //       ("Messages", "com.apple.MobileSMS"),
         ]
         
         if let dock = Application.allForBundleID("com.apple.dock").first {

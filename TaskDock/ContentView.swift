@@ -58,16 +58,12 @@ struct ContentView: View {
             }.buttonStyle(.borderless).padding(8)
 
             HStack(spacing: 2) {
-                ForEach(Dictionary(grouping: draggingWindows ?? space.windows.filter { window in
-                    !["com.apple.iChat", "com.microsoft.teams", "com.hnc.Discord", "com.mattermost.desktop"].contains(window.bundleId)
-                }) { $0.bundleId }
-                    .sorted(by: { $0.key < $1.key }), id: \.key) { bundleId, windows in
-                    let firstWindow = windows.first!
-                    TaskBarItemView(window: firstWindow, groupedWindows: windows)
+                ForEach(draggingWindows ?? space.windows, id: \.id) { window in
+                    TaskBarItemView(window: window)
                         .onDrag({
-                            dragged = firstWindow
+                            dragged = window
                             draggingWindows = [Window](space.windows)
-                            return NSItemProvider(object: String(firstWindow.id) as NSString)
+                            return NSItemProvider(object: String(window.id) as NSString)
                         }, preview: {
                             Rectangle().fill(Color.clear)
                         })
@@ -76,16 +72,14 @@ struct ContentView: View {
                             delegate: ReorderDropDelegate(
                                 displayId: displayId,
                                 spaceId: space.id,
-                                item: firstWindow,
+                                item: window,
                                 onChangeOrder: onChangeOrder,
                                 data: $draggingWindows,
                                 dataa: $space.windows,
                                 dragged: $dragged)
                         )
                 }
-            }
-            .frame(maxHeight: 36)
-            .padding(.horizontal, 8)
+            }.padding(.horizontal, 8)
             
             Spacer(minLength: 16)
             
