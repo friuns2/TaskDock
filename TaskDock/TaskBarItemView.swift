@@ -23,9 +23,15 @@ struct TaskBarItemView: View {
                 Image(nsImage: icon).resizable().frame(width: 16, height: 16)
             }
             if let grouped = groupedWindows, grouped.count > 1 {
-                Text("\(window.name) (\(grouped.count))").frame(maxWidth: 120).lineLimit(1).truncationMode(.tail).padding(.leading, -2)
+                Text("\(window.name) (\(grouped.count))")
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .padding(.leading, -2)
             } else {
-                Text("\(window.title ?? window.name)").frame(maxWidth: 120).lineLimit(1).truncationMode(.tail).padding(.leading, -2)
+                Text("\(window.title ?? window.name)")
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .padding(.leading, -2)
             }
         }.padding(EdgeInsets(top: 4, leading: 4, bottom: 4, trailing: 6))
             .background(RoundedRectangle(cornerRadius: 6).fill(Color(NSColor.controlColor)))

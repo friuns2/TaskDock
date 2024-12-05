@@ -82,9 +82,9 @@ struct ContentView: View {
                             )
                     }
                 }
-            }.padding(.horizontal, 8)
+            }
             
-            Spacer(minLength: 16)
+            Spacer()
             
             HStack(spacing: 2) {
                 ForEach(tray, id: \.bundleId) { app in
