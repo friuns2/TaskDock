@@ -7,7 +7,6 @@
 
 import AXSwift
 import SwiftUI
-import ApplicationServices // Import ApplicationServices for kAXCloseWindowAction
 
 struct TaskBarItemView: View {
     let window: Window
@@ -57,12 +56,14 @@ struct TaskBarItemView: View {
             .contextMenu {
                 ForEach(grouped, id: \.id) { win in
                     Button(win.title ?? win.name) {
-                        WindowItemView.activateWindow(win)
+                        activateWindow(win)
                     }
                 }
                 Divider()
-                Button("Close Window") {
-                    WindowItemView.closeWindow(window)
+                ForEach(grouped, id: \.id) { win in
+                    Button("Close \(win.title ?? win.name)") {
+                        closeWindow(win)
+                    }
                 }
             }
         } else {
@@ -73,10 +74,55 @@ struct TaskBarItemView: View {
                 isActive: isActive,
                 groupedWindows: groupedWindows
             )
-            .contextMenu {
-                Button("Close Window") {
-                    WindowItemView.closeWindow(window)
+        }
+    }
+    
+    private func activateWindow(_ window: Window) {
+        let nsapp = NSRunningApplication(processIdentifier: window.pid)
+        let app = Application.init(forProcessID: window.pid)
+        let windows = try! app?.windows()
+        
+        let axwindow = windows?.first(where: { w in
+            var cgWindowId = CGWindowID()
+            if (_AXUIElementGetWindow(w.element, &cgWindowId) != .success) {
+                print("cannot get CGWindow id (objc bridged call)")
+            } else {
+                return cgWindowId == window.id
+            }
+            return false
+        })
+        
+        if let axwindow = axwindow {
+            nsapp?.activate()
+            try? axwindow.performAction(.raise)
+            try? axwindow.setAttribute(.focused, value: kCFBooleanTrue)
+        } else {
+            nsapp?.activate(options: .activateAllWindows)
+        }
+    }
+    
+    private func closeWindow(_ window: Window) {
+        let app = Application.init(forProcessID: window.pid)
+        let windows = try! app?.windows()
+        
+        let axwindow = windows?.first(where: { w in
+            var cgWindowId = CGWindowID()
+            if (_AXUIElementGetWindow(w.element, &cgWindowId) != .success) {
+                print("cannot get CGWindow id (objc bridged call)")
+            } else {
+                return cgWindowId == window.id
+            }
+            return false
+        })
+        
+        if let axwindow = axwindow {
+            // Try to get the close button and press it
+            do {
+                if let closeButton: UIElement = try axwindow.attribute(.closeButton) {
+                    try closeButton.performAction(.press)
                 }
+            } catch {
+                print("Could not close window: \(error)")
             }
         }
     }
@@ -112,39 +158,76 @@ struct WindowItemView: View {
                 .stroke(isActive ? Color.blue.opacity(0.5) : Color.clear, lineWidth: 1)
         )
         .onTapGesture {
-            WindowItemView.activateWindow(window)
+            activateWindow(window)
         }
         .contextMenu {
             if let grouped = groupedWindows, grouped.count > 1 {
                 ForEach(grouped, id: \.id) { win in
                     Button(win.title ?? win.name) {
-                        WindowItemView.activateWindow(win)
+                        activateWindow(win)
                     }
                 }
                 Divider()
-            }
-            Button("Close Window") {
-                WindowItemView.closeWindow(window)
+                ForEach(grouped, id: \.id) { win in
+                    Button("Close \(win.title ?? win.name)") {
+                        closeWindow(win)
+                    }
+                }
+            } else {
+                Button("Close Window") {
+                    closeWindow(window)
+                }
             }
         }
     }
     
-    static func activateWindow(_ window: Window) {
+    private func activateWindow(_ window: Window) {
         let nsapp = NSRunningApplication(processIdentifier: window.pid)
-        if let axwindow = StaticLookups.grabAXWindow(pid: window.pid, window.id) {
+        let app = Application.init(forProcessID: window.pid)
+        let windows = try! app?.windows()
+        
+        let axwindow = windows?.first(where: { w in
+            var cgWindowId = CGWindowID()
+            if (_AXUIElementGetWindow(w.element, &cgWindowId) != .success) {
+                print("cannot get CGWindow id (objc bridged call)")
+            } else {
+                return cgWindowId == window.id
+            }
+            return false
+        })
+        
+        if let axwindow = axwindow {
             nsapp?.activate()
             try? axwindow.performAction(.raise)
-            try? axwindow.setAttribute(.focused, value: kCFBooleanTrue as CFBoolean)
+            try? axwindow.setAttribute(.focused, value: kCFBooleanTrue)
         } else {
             nsapp?.activate(options: .activateAllWindows)
         }
     }
     
-    static func closeWindow(_ window: Window) {
-        if let axwindow = StaticLookups.grabAXWindow(pid: window.pid, window.id) {
-            try? axwindow.performAction("AXClose") // Use string literal for the action
-        } else {
-            print("Could not get AXUIElement for window with id \(window.id)")
+    private func closeWindow(_ window: Window) {
+        let app = Application.init(forProcessID: window.pid)
+        let windows = try! app?.windows()
+        
+        let axwindow = windows?.first(where: { w in
+            var cgWindowId = CGWindowID()
+            if (_AXUIElementGetWindow(w.element, &cgWindowId) != .success) {
+                print("cannot get CGWindow id (objc bridged call)")
+            } else {
+                return cgWindowId == window.id
+            }
+            return false
+        })
+        
+        if let axwindow = axwindow {
+            // Try to get the close button and press it
+            do {
+                if let closeButton: UIElement = try axwindow.attribute(.closeButton) {
+                    try closeButton.performAction(.press)
+                }
+            } catch {
+                print("Could not close window: \(error)")
+            }
         }
     }
 }
