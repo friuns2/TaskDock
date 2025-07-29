@@ -146,7 +146,7 @@ struct WindowItemView: View {
             if let icon = icon {
                 Image(nsImage: icon).resizable().frame(width: 16, height: 16)
             }
-            Text("\(window.title ?? window.name)")
+            Text(truncatedTitle(window.title ?? window.name))
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .padding(.leading, -2)
@@ -177,6 +177,14 @@ struct WindowItemView: View {
                 }
             }
         }
+    }
+    
+    private func truncatedTitle(_ title: String) -> String {
+        let maxLength = 60
+        if title.count > maxLength {
+            return String(title.prefix(maxLength - 3)) + "..."
+        }
+        return title
     }
     
     private func activateWindow(_ window: Window) {
@@ -211,7 +219,8 @@ struct WindowItemView: View {
             var cgWindowId = CGWindowID()
             if (_AXUIElementGetWindow(w.element, &cgWindowId) != .success) {
                 print("cannot get CGWindow id (objc bridged call)")
-            } else {
+            }
+            else {
                 return cgWindowId == window.id
             }
             return false
