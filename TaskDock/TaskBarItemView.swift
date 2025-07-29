@@ -48,8 +48,16 @@ struct TaskBarItemView: View {
                     WindowItemView(
                         window: win,
                         icon: window.icon,
-                        isActive: win.id == activeWindowId
+                        isActive: win.id == activeWindowId,
+                        groupedWindows: grouped
                     )
+                }
+            }
+            .contextMenu {
+                ForEach(grouped, id: \.id) { win in
+                    Button(win.title ?? win.name) {
+                        activateWindow(win)
+                    }
                 }
             }
         } else {
@@ -57,8 +65,33 @@ struct TaskBarItemView: View {
             WindowItemView(
                 window: window,
                 icon: window.icon,
-                isActive: isActive
+                isActive: isActive,
+                groupedWindows: groupedWindows
             )
+        }
+    }
+    
+    private func activateWindow(_ window: Window) {
+        let nsapp = NSRunningApplication(processIdentifier: window.pid)
+        let app = Application.init(forProcessID: window.pid)
+        let windows = try! app?.windows()
+        
+        let axwindow = windows?.first(where: { w in
+            var cgWindowId = CGWindowID()
+            if (_AXUIElementGetWindow(w.element, &cgWindowId) != .success) {
+                print("cannot get CGWindow id (objc bridged call)")
+            } else {
+                return cgWindowId == window.id
+            }
+            return false
+        })
+        
+        if let axwindow = axwindow {
+            nsapp?.activate()
+            try? axwindow.performAction(.raise)
+            try? axwindow.setAttribute(.focused, value: kCFBooleanTrue)
+        } else {
+            nsapp?.activate(options: .activateAllWindows)
         }
     }
 }
@@ -67,6 +100,14 @@ struct WindowItemView: View {
     let window: Window
     let icon: NSImage?
     let isActive: Bool
+    let groupedWindows: [Window]?
+    
+    init(window: Window, icon: NSImage? = nil, isActive: Bool = false, groupedWindows: [Window]? = nil) {
+        self.window = window
+        self.icon = icon
+        self.isActive = isActive
+        self.groupedWindows = groupedWindows
+    }
     
     var body: some View {
         HStack {
@@ -86,6 +127,15 @@ struct WindowItemView: View {
         )
         .onTapGesture {
             activateWindow(window)
+        }
+        .contextMenu {
+            if let grouped = groupedWindows, grouped.count > 1 {
+                ForEach(grouped, id: \.id) { win in
+                    Button(win.title ?? win.name) {
+                        activateWindow(win)
+                    }
+                }
+            }
         }
     }
     
