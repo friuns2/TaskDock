@@ -54,3 +54,23 @@ extension View {
         )
     }
 }
+
+struct NSClickGesture: Gesture {
+    let buttonMask: NSEvent.ButtonMask
+    let action: () -> Void
+    
+    init(buttonMask: NSEvent.ButtonMask, action: @escaping () -> Void = {}) {
+        self.buttonMask = buttonMask
+        self.action = action
+    }
+    
+    var body: some Gesture {
+        DragGesture(minimumDistance: 0)
+            .onEnded { value in
+                guard let event = NSApplication.shared.currentEvent else { return }
+                if event.type == .leftMouseUp && event.buttonMask == buttonMask {
+                    action()
+                }
+            }
+    }
+}

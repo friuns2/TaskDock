@@ -16,7 +16,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var stateHandler: StateHandler!
     private var changeHandler: ChangeHandler!
-    private var trayHandler: TrayHandler!
     private var orderHandler: OrderHandler!
 
     func applicationDidFinishLaunching(_ aNotification: Notification) {
@@ -33,7 +32,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         stateHandler = StateHandler()
         changeHandler = ChangeHandler()
-        trayHandler = TrayHandler()
         orderHandler = OrderHandler()
         
         changeHandler.onRecreate = recreate
@@ -47,7 +45,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func recreate() {
         let state = stateHandler.recreate()
         orderHandler.update(state: state)
-        let tray = trayHandler.getApps()
         
         // Remove existing
         dockWindows.forEach { displayId, dock in
@@ -63,7 +60,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             // Create view
             let spaceId = CGSManagedDisplayGetCurrentSpace(CGSMainConnectionID(), display.uuid)
             let space = display.spaces[spaceId] ?? Space(id: spaceId)
-            var view = ContentView(displayId: displayId, space: space, tray: tray)
+            var view = ContentView(displayId: displayId, space: space)
             view.onShowMenu = { self.openMenu(on: display.frame) }
             view.onChangeOrder = { displayId, spaceId, updated in
                 self.orderHandler.move(displayId: displayId, spaceId: spaceId, updated: updated)
@@ -83,7 +80,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func refresh() {
         let state = stateHandler.refresh()
         orderHandler.update(state: state)
-        let tray = trayHandler.getApps()
         
         // Update each display's dock
         dockWindows.forEach { displayId, dock in
@@ -97,7 +93,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
             
             dock.view.spacePub.send(space)
-            dock.view.trayPub.send(tray)
         }
     }
     

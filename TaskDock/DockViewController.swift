@@ -13,15 +13,9 @@ class DockViewController: NSViewController {
             
         }
     }
-    public var tray: [App] {
-        didSet {
-            
-        }
-    }
     
-    init(space: Space, tray: [App]) {
+    init(space: Space) {
         self.space = space
-        self.tray = tray
         
         super.init(nibName: nil, bundle: nil)
     }

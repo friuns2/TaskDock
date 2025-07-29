@@ -11,10 +11,12 @@ import SwiftUI
 struct TaskBarItemView: View {
     let window: Window
     let groupedWindows: [Window]?
+    let isActive: Bool
     
-    init(window: Window, groupedWindows: [Window]? = nil) {
+    init(window: Window, groupedWindows: [Window]? = nil, isActive: Bool = false) {
         self.window = window
         self.groupedWindows = groupedWindows
+        self.isActive = isActive
     }
     
     var body: some View {
@@ -24,17 +26,21 @@ struct TaskBarItemView: View {
             }
             if let grouped = groupedWindows, grouped.count > 1 {
                 Text("\(window.name) (\(grouped.count))")
-                    .lineLimit(1)
+                    .lineLimit(2)
                     .truncationMode(.tail)
                     .padding(.leading, -2)
             } else {
                 Text("\(window.title ?? window.name)")
-                    .lineLimit(1)
+                    .lineLimit(2)
                     .truncationMode(.tail)
                     .padding(.leading, -2)
             }
         }.padding(EdgeInsets(top: 4, leading: 4, bottom: 4, trailing: 6))
-            .background(RoundedRectangle(cornerRadius: 6).fill(Color(NSColor.controlColor)))
+            .background(RoundedRectangle(cornerRadius: 6).fill(isActive ? Color(NSColor.selectedControlColor) : Color(NSColor.controlColor)))
+            .overlay(
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(isActive ? Color.blue.opacity(0.5) : Color.clear, lineWidth: 1)
+            )
             .contextMenu {
                 if let grouped = groupedWindows, grouped.count > 1 {
                     ForEach(grouped, id: \.id) { win in

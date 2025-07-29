@@ -26,13 +26,11 @@ struct ContentView: View {
     let displayId: CGDirectDisplayID
     
     let spacePub = PassthroughSubject<Space, Never>()
-    let trayPub = PassthroughSubject<[App], Never>()
     
     @State var space: Space
-    @State var tray: [App]
-    
     @State private var dragged: Window?
     @State var draggingWindows: [Window]?
+    @State private var activeWindowId: CGWindowID = 0
     
     var onShowMenu: (() -> Void)?
     var onChangeOrder: ((_ displayId: CGDirectDisplayID, _ spaceId: CGSSpaceID, _ updated: [CGWindowID]) -> Void)?
@@ -42,7 +40,6 @@ struct ContentView: View {
     var body: some View {
         
         HStack(spacing: 2) {
-            
             
             Button(action: {
                 onShowMenu?()
@@ -61,7 +58,7 @@ struct ContentView: View {
                 ForEach(draggingWindows ?? space.windows, id: \.id) { window in
                     let groupedWindows = (draggingWindows ?? space.windows).filter { $0.bundleId == window.bundleId }
                     if groupedWindows.first?.id == window.id {  // Only show first window of each group
-                        TaskBarItemView(window: window, groupedWindows: groupedWindows)
+                        TaskBarItemView(window: window, groupedWindows: groupedWindows, isActive: window.id == activeWindowId)
                             .onDrag({
                                 dragged = window
                                 draggingWindows = [Window](space.windows)
@@ -82,42 +79,9 @@ struct ContentView: View {
                             )
                     }
                 }
-            }
+            }.padding(.horizontal, 8)
             
-            Spacer()
-            
-            HStack(spacing: 2) {
-                ForEach(tray, id: \.bundleId) { app in
-                    Button(action: {
-                        app.moveToSpace(space.id)
-                        app.activate()
-                    }, label: {
-                        if let icon = app.icon {
-                            Image(nsImage: icon).resizable().frame(width: 34, height: 34)
-                        } else {
-                            Text("\(app.name)")
-                        }
-                    }).buttonStyle(.borderless)
-                        .overlay(HStack(alignment: .top) {
-                            if let status = app.status, !status.isEmpty {
-                                ZStack {
-                                    Circle().fill(Color.red)
-                                    Text(status).foregroundStyle(Color.white).font(.system(size: 12))
-                                }.frame(width: 18, height: 18)
-                                    .offset(x: 10, y: -10)
-                                    .allowsHitTesting(false)
-                            }
-                        })
-                }
-            }.onDrop(of: [UTType.application], isTargeted: nil) { items in
-                guard let item = items.first else { return false }
-                
-                item.loadFileRepresentation(for: UTType.application, completionHandler: { url, _, err in
-                    print(url)
-                })
-                
-                return true
-            }
+            Spacer(minLength: 16)
             
             Button(action: {
                 CoreDockSendNotification("com.apple.expose.awake" as CFString)
@@ -139,8 +103,23 @@ struct ContentView: View {
                     draggingWindows = nil
                 }
             }
-            .onReceive(trayPub) { apps in
-                self.tray = apps
+            .onAppear {
+                // Start checking for active window
+                Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
+                    if let frontmostApp = NSWorkspace.shared.frontmostApplication,
+                       let windowList = CGWindowListCopyWindowInfo(.optionOnScreenOnly, kCGNullWindowID) as? [[String: Any]] {
+                        for window in windowList {
+                            if let ownerPID = window[kCGWindowOwnerPID as String] as? pid_t,
+                               ownerPID == frontmostApp.processIdentifier,
+                               let windowID = window[kCGWindowNumber as String] as? CGWindowID,
+                               let layer = window[kCGWindowLayer as String] as? Int,
+                               layer == 0 {
+                                activeWindowId = windowID
+                                break
+                            }
+                        }
+                    }
+                }
             }
     }
 }
