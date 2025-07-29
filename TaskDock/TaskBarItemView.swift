@@ -161,8 +161,20 @@ struct WindowItemView: View {
             activateWindow(window)
         }
         .contextMenu {
-            Button("Close Window") {
-                closeWindow(window)
+            if let grouped = groupedWindows, grouped.count > 1 {
+                ForEach(grouped, id: \.id) { win in
+                    Button(win.title ?? win.name) {
+                        activateWindow(win)
+                    }
+                }
+                Divider()
+                Button("Close Window") {
+                    closeWindow(window)
+                }
+            } else {
+                Button("Close Window") {
+                    closeWindow(window)
+                }
             }
         }
     }
