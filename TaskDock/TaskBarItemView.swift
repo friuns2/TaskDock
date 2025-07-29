@@ -7,6 +7,7 @@
 
 import AXSwift
 import SwiftUI
+import ApplicationServices // Import ApplicationServices for kAXCloseWindowAction
 
 struct TaskBarItemView: View {
     let window: Window
@@ -56,8 +57,12 @@ struct TaskBarItemView: View {
             .contextMenu {
                 ForEach(grouped, id: \.id) { win in
                     Button(win.title ?? win.name) {
-                        activateWindow(win)
+                        WindowItemView.activateWindow(win)
                     }
+                }
+                Divider()
+                Button("Close Window") {
+                    WindowItemView.closeWindow(window)
                 }
             }
         } else {
@@ -68,30 +73,11 @@ struct TaskBarItemView: View {
                 isActive: isActive,
                 groupedWindows: groupedWindows
             )
-        }
-    }
-    
-    private func activateWindow(_ window: Window) {
-        let nsapp = NSRunningApplication(processIdentifier: window.pid)
-        let app = Application.init(forProcessID: window.pid)
-        let windows = try! app?.windows()
-        
-        let axwindow = windows?.first(where: { w in
-            var cgWindowId = CGWindowID()
-            if (_AXUIElementGetWindow(w.element, &cgWindowId) != .success) {
-                print("cannot get CGWindow id (objc bridged call)")
-            } else {
-                return cgWindowId == window.id
+            .contextMenu {
+                Button("Close Window") {
+                    WindowItemView.closeWindow(window)
+                }
             }
-            return false
-        })
-        
-        if let axwindow = axwindow {
-            nsapp?.activate()
-            try? axwindow.performAction(.raise)
-            try? axwindow.setAttribute(.focused, value: kCFBooleanTrue)
-        } else {
-            nsapp?.activate(options: .activateAllWindows)
         }
     }
 }
@@ -126,40 +112,39 @@ struct WindowItemView: View {
                 .stroke(isActive ? Color.blue.opacity(0.5) : Color.clear, lineWidth: 1)
         )
         .onTapGesture {
-            activateWindow(window)
+            WindowItemView.activateWindow(window)
         }
         .contextMenu {
             if let grouped = groupedWindows, grouped.count > 1 {
                 ForEach(grouped, id: \.id) { win in
                     Button(win.title ?? win.name) {
-                        activateWindow(win)
+                        WindowItemView.activateWindow(win)
                     }
                 }
+                Divider()
+            }
+            Button("Close Window") {
+                WindowItemView.closeWindow(window)
             }
         }
     }
     
-    private func activateWindow(_ window: Window) {
+    static func activateWindow(_ window: Window) {
         let nsapp = NSRunningApplication(processIdentifier: window.pid)
-        let app = Application.init(forProcessID: window.pid)
-        let windows = try! app?.windows()
-        
-        let axwindow = windows?.first(where: { w in
-            var cgWindowId = CGWindowID()
-            if (_AXUIElementGetWindow(w.element, &cgWindowId) != .success) {
-                print("cannot get CGWindow id (objc bridged call)")
-            } else {
-                return cgWindowId == window.id
-            }
-            return false
-        })
-        
-        if let axwindow = axwindow {
+        if let axwindow = StaticLookups.grabAXWindow(pid: window.pid, window.id) {
             nsapp?.activate()
             try? axwindow.performAction(.raise)
-            try? axwindow.setAttribute(.focused, value: kCFBooleanTrue)
+            try? axwindow.setAttribute(.focused, value: kCFBooleanTrue as CFBoolean)
         } else {
             nsapp?.activate(options: .activateAllWindows)
+        }
+    }
+    
+    static func closeWindow(_ window: Window) {
+        if let axwindow = StaticLookups.grabAXWindow(pid: window.pid, window.id) {
+            try? axwindow.performAction("AXClose") // Use string literal for the action
+        } else {
+            print("Could not get AXUIElement for window with id \(window.id)")
         }
     }
 }
