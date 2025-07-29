@@ -59,10 +59,6 @@ struct TaskBarItemView: View {
                         activateWindow(win)
                     }
                 }
-                Divider()
-                Button("Close Window") {
-                    closeWindow(window)
-                }
             }
         } else {
             // Single window - show normally
