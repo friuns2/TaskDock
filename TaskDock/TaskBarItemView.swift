@@ -12,44 +12,78 @@ struct TaskBarItemView: View {
     let window: Window
     let groupedWindows: [Window]?
     let isActive: Bool
+    let activeWindowId: CGWindowID
+    let recentWindowIds: [CGWindowID]
     
-    init(window: Window, groupedWindows: [Window]? = nil, isActive: Bool = false) {
+    init(window: Window, groupedWindows: [Window]? = nil, isActive: Bool = false, activeWindowId: CGWindowID = 0, recentWindowIds: [CGWindowID] = []) {
         self.window = window
         self.groupedWindows = groupedWindows
         self.isActive = isActive
+        self.activeWindowId = activeWindowId
+        self.recentWindowIds = recentWindowIds
+    }
+    
+    private var recentWindows: [Window] {
+        guard let grouped = groupedWindows, grouped.count > 1 else { return [] }
+        
+        // Sort by recent activity using the recentWindowIds order
+        let sorted = grouped.sorted { lhs, rhs in
+            let lhsIndex = recentWindowIds.firstIndex(of: lhs.id) ?? Int.max
+            let rhsIndex = recentWindowIds.firstIndex(of: rhs.id) ?? Int.max
+            
+            if lhsIndex == rhsIndex {
+                return lhs.id < rhs.id // Fallback to ID order
+            }
+            return lhsIndex < rhsIndex
+        }
+        
+        return Array(sorted.prefix(2))
     }
     
     var body: some View {
-        HStack {
-            if let icon = window.icon {
-                Image(nsImage: icon).resizable().frame(width: 16, height: 16)
-            }
-            if let grouped = groupedWindows, grouped.count > 1 {
-                Text("\(window.name) (\(grouped.count))")
-                    .lineLimit(2)
-                    .truncationMode(.tail)
-                    .padding(.leading, -2)
-            } else {
-                Text("\(window.title ?? window.name)")
-                    .lineLimit(2)
-                    .truncationMode(.tail)
-                    .padding(.leading, -2)
-            }
-        }.padding(EdgeInsets(top: 4, leading: 4, bottom: 4, trailing: 6))
-            .background(RoundedRectangle(cornerRadius: 6).fill(isActive ? Color(NSColor.selectedControlColor) : Color(NSColor.controlColor)))
-            .overlay(
-                RoundedRectangle(cornerRadius: 6)
-                    .stroke(isActive ? Color.blue.opacity(0.5) : Color.clear, lineWidth: 1)
-            )
-            .contextMenu {
-                if let grouped = groupedWindows, grouped.count > 1 {
-                    ForEach(grouped, id: \.id) { win in
-                        Button(win.title ?? win.name) {
-                            activateWindow(win)
-                        }
-                    }
+        if let grouped = groupedWindows, grouped.count > 1 {
+            // Show last 2 active windows as separate clickable items
+            HStack(spacing: 1) {
+                ForEach(recentWindows, id: \.id) { win in
+                    WindowItemView(
+                        window: win,
+                        icon: window.icon,
+                        isActive: win.id == activeWindowId
+                    )
                 }
             }
+        } else {
+            // Single window - show normally
+            WindowItemView(
+                window: window,
+                icon: window.icon,
+                isActive: isActive
+            )
+        }
+    }
+}
+
+struct WindowItemView: View {
+    let window: Window
+    let icon: NSImage?
+    let isActive: Bool
+    
+    var body: some View {
+        HStack {
+            if let icon = icon {
+                Image(nsImage: icon).resizable().frame(width: 16, height: 16)
+            }
+            Text("\(window.title ?? window.name)")
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .padding(.leading, -2)
+        }
+        .padding(EdgeInsets(top: 4, leading: 4, bottom: 4, trailing: 6))
+        .background(RoundedRectangle(cornerRadius: 6).fill(isActive ? Color(NSColor.selectedControlColor) : Color(NSColor.controlColor)))
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .stroke(isActive ? Color.blue.opacity(0.5) : Color.clear, lineWidth: 1)
+        )
         .onTapGesture {
             activateWindow(window)
         }

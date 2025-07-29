@@ -31,6 +31,7 @@ struct ContentView: View {
     @State private var dragged: Window?
     @State var draggingWindows: [Window]?
     @State private var activeWindowId: CGWindowID = 0
+    @State private var recentWindowIds: [CGWindowID] = [] // Track recently active windows
     
     var onShowMenu: (() -> Void)?
     var onChangeOrder: ((_ displayId: CGDirectDisplayID, _ spaceId: CGSSpaceID, _ updated: [CGWindowID]) -> Void)?
@@ -58,7 +59,13 @@ struct ContentView: View {
                 ForEach(draggingWindows ?? space.windows, id: \.id) { window in
                     let groupedWindows = (draggingWindows ?? space.windows).filter { $0.bundleId == window.bundleId }
                     if groupedWindows.first?.id == window.id {  // Only show first window of each group
-                        TaskBarItemView(window: window, groupedWindows: groupedWindows, isActive: window.id == activeWindowId)
+                        TaskBarItemView(
+                            window: window, 
+                            groupedWindows: groupedWindows, 
+                            isActive: window.id == activeWindowId,
+                            activeWindowId: activeWindowId,
+                            recentWindowIds: recentWindowIds
+                        )
                             .onDrag({
                                 dragged = window
                                 draggingWindows = [Window](space.windows)
@@ -114,7 +121,22 @@ struct ContentView: View {
                                let windowID = window[kCGWindowNumber as String] as? CGWindowID,
                                let layer = window[kCGWindowLayer as String] as? Int,
                                layer == 0 {
-                                activeWindowId = windowID
+                                
+                                // Only update if window actually changed
+                                if activeWindowId != windowID {
+                                    activeWindowId = windowID
+                                    
+                                    // Update recent windows history
+                                    if let existingIndex = recentWindowIds.firstIndex(of: windowID) {
+                                        recentWindowIds.remove(at: existingIndex)
+                                    }
+                                    recentWindowIds.insert(windowID, at: 0)
+                                    
+                                    // Keep only last 10 for efficiency
+                                    if recentWindowIds.count > 10 {
+                                        recentWindowIds = Array(recentWindowIds.prefix(10))
+                                    }
+                                }
                                 break
                             }
                         }
