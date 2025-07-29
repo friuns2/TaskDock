@@ -59,6 +59,12 @@ struct TaskBarItemView: View {
                         activateWindow(win)
                     }
                 }
+                Divider()
+                ForEach(grouped, id: \.id) { win in
+                    Button("Close \(win.title ?? win.name)") {
+                        closeWindow(win)
+                    }
+                }
             }
         } else {
             // Single window - show normally
@@ -155,22 +161,8 @@ struct WindowItemView: View {
             activateWindow(window)
         }
         .contextMenu {
-            if let grouped = groupedWindows, grouped.count > 1 {
-                ForEach(grouped, id: \.id) { win in
-                    Button(win.title ?? win.name) {
-                        activateWindow(win)
-                    }
-                }
-                Divider()
-                ForEach(grouped, id: \.id) { win in
-                    Button("Close \(win.title ?? win.name)") {
-                        closeWindow(win)
-                    }
-                }
-            } else {
-                Button("Close Window") {
-                    closeWindow(window)
-                }
+            Button("Close Window") {
+                closeWindow(window)
             }
         }
     }
