@@ -60,10 +60,8 @@ struct TaskBarItemView: View {
                     }
                 }
                 Divider()
-                ForEach(grouped, id: \.id) { win in
-                    Button("Close \(win.title ?? win.name)") {
-                        closeWindow(win)
-                    }
+                Button("Close Window") {
+                    closeWindow(window)
                 }
             }
         } else {
