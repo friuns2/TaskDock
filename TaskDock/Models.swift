@@ -78,12 +78,14 @@ class Window: Equatable {
         self.pid = pid
         self.bundleId = bundleId
         self.path = path
+        self.isPinned = PinnedWindowsManager.shared.isPinned(bundleId: bundleId)
     }
     
     var id: CGWindowID
     var name: String
     var title: String?
     var icon: NSImage?
+    var isPinned: Bool
     
     var bounds: CGRect
     
@@ -154,4 +156,49 @@ class StateModel {
     }
     
     var displays: [CGDirectDisplayID : Display]
+}
+
+// Manager for handling pinned windows persistence
+class PinnedWindowsManager {
+    static let shared = PinnedWindowsManager()
+    private let userDefaults = UserDefaults.standard
+    private let pinnedWindowsKey = "TaskDockPinnedWindows"
+    
+    private init() {}
+    
+    private var pinnedBundleIds: Set<String> {
+        get {
+            let array = userDefaults.stringArray(forKey: pinnedWindowsKey) ?? []
+            return Set(array)
+        }
+        set {
+            userDefaults.set(Array(newValue), forKey: pinnedWindowsKey)
+        }
+    }
+    
+    func isPinned(bundleId: String) -> Bool {
+        return pinnedBundleIds.contains(bundleId)
+    }
+    
+    func togglePin(bundleId: String) {
+        var current = pinnedBundleIds
+        if current.contains(bundleId) {
+            current.remove(bundleId)
+        } else {
+            current.insert(bundleId)
+        }
+        pinnedBundleIds = current
+    }
+    
+    func pin(bundleId: String) {
+        var current = pinnedBundleIds
+        current.insert(bundleId)
+        pinnedBundleIds = current
+    }
+    
+    func unpin(bundleId: String) {
+        var current = pinnedBundleIds
+        current.remove(bundleId)
+        pinnedBundleIds = current
+    }
 }
