@@ -64,7 +64,23 @@ struct ContentView: View {
                             groupedWindows: groupedWindows, 
                             isActive: window.id == activeWindowId,
                             activeWindowId: activeWindowId,
-                            recentWindowIds: recentWindowIds
+                            recentWindowIds: recentWindowIds,
+                            onReplaceWindow: { currentWindowId, replacementWindowId in
+                                // Replace current window's position with replacement window
+                                if let currentIndex = recentWindowIds.firstIndex(of: currentWindowId) {
+                                    // Remove replacement window from its current position if it exists
+                                    var newRecentWindowIds = recentWindowIds
+                                    if let replacementIndex = newRecentWindowIds.firstIndex(of: replacementWindowId) {
+                                        newRecentWindowIds.remove(at: replacementIndex)
+                                        // Adjust current index if needed
+                                        let adjustedCurrentIndex = replacementIndex < currentIndex ? currentIndex - 1 : currentIndex
+                                        newRecentWindowIds[adjustedCurrentIndex] = replacementWindowId
+                                    } else {
+                                        newRecentWindowIds[currentIndex] = replacementWindowId
+                                    }
+                                    recentWindowIds = newRecentWindowIds
+                                }
+                            }
                         )
                             .onDrag({
                                 dragged = window

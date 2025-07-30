@@ -14,13 +14,15 @@ struct TaskBarItemView: View {
     let isActive: Bool
     let activeWindowId: CGWindowID
     let recentWindowIds: [CGWindowID]
+    let onReplaceWindow: ((CGWindowID, CGWindowID) -> Void)? // currentWindow, replacementWindow
     
-    init(window: Window, groupedWindows: [Window]? = nil, isActive: Bool = false, activeWindowId: CGWindowID = 0, recentWindowIds: [CGWindowID] = []) {
+    init(window: Window, groupedWindows: [Window]? = nil, isActive: Bool = false, activeWindowId: CGWindowID = 0, recentWindowIds: [CGWindowID] = [], onReplaceWindow: ((CGWindowID, CGWindowID) -> Void)? = nil) {
         self.window = window
         self.groupedWindows = groupedWindows
         self.isActive = isActive
         self.activeWindowId = activeWindowId
         self.recentWindowIds = recentWindowIds
+        self.onReplaceWindow = onReplaceWindow
     }
     
     private var recentWindows: [Window] {
@@ -49,14 +51,14 @@ struct TaskBarItemView: View {
                         window: win,
                         icon: window.icon,
                         isActive: win.id == activeWindowId,
-                        groupedWindows: grouped
+                        groupedWindows: grouped,
+                        onReplaceWindow: onReplaceWindow
                     )
                 }
             }
             .contextMenu {
                 ForEach(grouped, id: \.id) { win in
                     Button(win.title ?? win.name) {
-                        closeWindow(window)
                         activateWindow(win)
                     }
                 }
@@ -73,7 +75,8 @@ struct TaskBarItemView: View {
                 window: window,
                 icon: window.icon,
                 isActive: isActive,
-                groupedWindows: groupedWindows
+                groupedWindows: groupedWindows,
+                onReplaceWindow: onReplaceWindow
             )
         }
     }
@@ -134,12 +137,14 @@ struct WindowItemView: View {
     let icon: NSImage?
     let isActive: Bool
     let groupedWindows: [Window]?
+    let onReplaceWindow: ((CGWindowID, CGWindowID) -> Void)?
     
-    init(window: Window, icon: NSImage? = nil, isActive: Bool = false, groupedWindows: [Window]? = nil) {
+    init(window: Window, icon: NSImage? = nil, isActive: Bool = false, groupedWindows: [Window]? = nil, onReplaceWindow: ((CGWindowID, CGWindowID) -> Void)? = nil) {
         self.window = window
         self.icon = icon
         self.isActive = isActive
         self.groupedWindows = groupedWindows
+        self.onReplaceWindow = onReplaceWindow
     }
     
     var body: some View {
@@ -165,6 +170,8 @@ struct WindowItemView: View {
             if let grouped = groupedWindows, grouped.count > 1 {
                 ForEach(grouped, id: \.id) { win in
                     Button(win.title ?? win.name) {
+                        // Replace the current window with the selected one
+                        onReplaceWindow?(window.id, win.id)
                         activateWindow(win)
                     }
                 }
