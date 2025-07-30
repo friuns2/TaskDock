@@ -94,9 +94,8 @@ struct TaskBarItemView: View {
                     }
                 }
                 Divider()
-                Button("Hide") {
-                    hideWindow(window)
-                    onTogglePin?(window.id) // Unpin when hiding
+                Button("Unpin") {
+                    onTogglePin?(window.id) // Just unpin, don't minimize
                 }
             } preview: {
                 // Auto-pin when context menu appears
@@ -237,18 +236,16 @@ struct WindowItemView: View {
                     closeWindow(window)
                 }
                 Divider()
-                Button("Hide") {
-                    hideWindow(window)
-                    onTogglePin?(window.id) // Unpin when hiding
+                Button("Unpin") {
+                    onTogglePin?(window.id) // Just unpin, don't minimize
                 }
             } else {
                 Button("Close Window") {
                     closeWindow(window)
                 }
                 Divider()
-                Button("Hide") {
-                    hideWindow(window)
-                    onTogglePin?(window.id) // Unpin when hiding
+                Button("Unpin") {
+                    onTogglePin?(window.id) // Just unpin, don't minimize
                 }
             }
         } preview: {
