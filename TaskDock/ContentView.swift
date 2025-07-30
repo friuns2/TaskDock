@@ -38,6 +38,21 @@ struct ContentView: View {
     
     let sorter = SortHandler()
     
+    private func handleWindowActivation(_ windowId: CGWindowID) {
+        activeWindowId = windowId
+        
+        // Update recent windows history
+        if let existingIndex = recentWindowIds.firstIndex(of: windowId) {
+            recentWindowIds.remove(at: existingIndex)
+        }
+        recentWindowIds.insert(windowId, at: 0)
+        
+        // Keep only last 10 for efficiency
+        if recentWindowIds.count > 10 {
+            recentWindowIds = Array(recentWindowIds.prefix(10))
+        }
+    }
+    
     var body: some View {
         
         HStack(spacing: 2) {
@@ -65,22 +80,7 @@ struct ContentView: View {
                             isActive: window.id == activeWindowId,
                             activeWindowId: activeWindowId,
                             recentWindowIds: recentWindowIds,
-                            onReplaceWindow: { currentWindowId, replacementWindowId in
-                                // Replace current window's position with replacement window
-                                if let currentIndex = recentWindowIds.firstIndex(of: currentWindowId) {
-                                    // Remove replacement window from its current position if it exists
-                                    var newRecentWindowIds = recentWindowIds
-                                    if let replacementIndex = newRecentWindowIds.firstIndex(of: replacementWindowId) {
-                                        newRecentWindowIds.remove(at: replacementIndex)
-                                        // Adjust current index if needed
-                                        let adjustedCurrentIndex = replacementIndex < currentIndex ? currentIndex - 1 : currentIndex
-                                        newRecentWindowIds[adjustedCurrentIndex] = replacementWindowId
-                                    } else {
-                                        newRecentWindowIds[currentIndex] = replacementWindowId
-                                    }
-                                    recentWindowIds = newRecentWindowIds
-                                }
-                            }
+                            onActivateWindow: handleWindowActivation
                         )
                             .onDrag({
                                 dragged = window
@@ -140,18 +140,7 @@ struct ContentView: View {
                                 
                                 // Only update if window actually changed
                                 if activeWindowId != windowID {
-                                    activeWindowId = windowID
-                                    
-                                    // Update recent windows history
-                                    if let existingIndex = recentWindowIds.firstIndex(of: windowID) {
-                                        recentWindowIds.remove(at: existingIndex)
-                                    }
-                                    recentWindowIds.insert(windowID, at: 0)
-                                    
-                                    // Keep only last 10 for efficiency
-                                    if recentWindowIds.count > 10 {
-                                        recentWindowIds = Array(recentWindowIds.prefix(10))
-                                    }
+                                    handleWindowActivation(windowID)
                                 }
                                 break
                             }

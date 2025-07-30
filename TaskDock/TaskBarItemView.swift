@@ -14,15 +14,15 @@ struct TaskBarItemView: View {
     let isActive: Bool
     let activeWindowId: CGWindowID
     let recentWindowIds: [CGWindowID]
-    let onReplaceWindow: ((CGWindowID, CGWindowID) -> Void)? // currentWindow, replacementWindow
+    let onActivateWindow: ((CGWindowID) -> Void)?
     
-    init(window: Window, groupedWindows: [Window]? = nil, isActive: Bool = false, activeWindowId: CGWindowID = 0, recentWindowIds: [CGWindowID] = [], onReplaceWindow: ((CGWindowID, CGWindowID) -> Void)? = nil) {
+    init(window: Window, groupedWindows: [Window]? = nil, isActive: Bool = false, activeWindowId: CGWindowID = 0, recentWindowIds: [CGWindowID] = [], onActivateWindow: ((CGWindowID) -> Void)? = nil) {
         self.window = window
         self.groupedWindows = groupedWindows
         self.isActive = isActive
         self.activeWindowId = activeWindowId
         self.recentWindowIds = recentWindowIds
-        self.onReplaceWindow = onReplaceWindow
+        self.onActivateWindow = onActivateWindow
     }
     
     private var recentWindows: [Window] {
@@ -52,7 +52,7 @@ struct TaskBarItemView: View {
                         icon: window.icon,
                         isActive: win.id == activeWindowId,
                         groupedWindows: grouped,
-                        onReplaceWindow: onReplaceWindow
+                        onActivateWindow: onActivateWindow
                     )
                 }
             }
@@ -76,7 +76,7 @@ struct TaskBarItemView: View {
                 icon: window.icon,
                 isActive: isActive,
                 groupedWindows: groupedWindows,
-                onReplaceWindow: onReplaceWindow
+                onActivateWindow: onActivateWindow
             )
         }
     }
@@ -100,6 +100,7 @@ struct TaskBarItemView: View {
             nsapp?.activate()
             try? axwindow.performAction(.raise)
             try? axwindow.setAttribute(.focused, value: kCFBooleanTrue)
+            onActivateWindow?(window.id)
         } else {
             nsapp?.activate(options: .activateAllWindows)
         }
@@ -137,14 +138,14 @@ struct WindowItemView: View {
     let icon: NSImage?
     let isActive: Bool
     let groupedWindows: [Window]?
-    let onReplaceWindow: ((CGWindowID, CGWindowID) -> Void)?
+    let onActivateWindow: ((CGWindowID) -> Void)?
     
-    init(window: Window, icon: NSImage? = nil, isActive: Bool = false, groupedWindows: [Window]? = nil, onReplaceWindow: ((CGWindowID, CGWindowID) -> Void)? = nil) {
+    init(window: Window, icon: NSImage? = nil, isActive: Bool = false, groupedWindows: [Window]? = nil, onActivateWindow: ((CGWindowID) -> Void)? = nil) {
         self.window = window
         self.icon = icon
         self.isActive = isActive
         self.groupedWindows = groupedWindows
-        self.onReplaceWindow = onReplaceWindow
+        self.onActivateWindow = onActivateWindow
     }
     
     var body: some View {
@@ -170,8 +171,6 @@ struct WindowItemView: View {
             if let grouped = groupedWindows, grouped.count > 1 {
                 ForEach(grouped, id: \.id) { win in
                     Button(win.title ?? win.name) {
-                        // Replace the current window with the selected one
-                        onReplaceWindow?(window.id, win.id)
                         activateWindow(win)
                     }
                 }
@@ -214,6 +213,7 @@ struct WindowItemView: View {
             nsapp?.activate()
             try? axwindow.performAction(.raise)
             try? axwindow.setAttribute(.focused, value: kCFBooleanTrue)
+            onActivateWindow?(window.id)
         } else {
             nsapp?.activate(options: .activateAllWindows)
         }
