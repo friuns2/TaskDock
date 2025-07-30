@@ -81,6 +81,10 @@ struct TaskBarItemView: View {
                 ForEach(grouped, id: \.id) { win in
                     Button(win.title ?? win.name) {
                         activateWindow(win)
+                        // Also pin the window when activated from context menu
+                        if !win.isPinned {
+                            onTogglePin?(win.id)
+                        }
                     }
                 }
                 Divider()
@@ -90,9 +94,18 @@ struct TaskBarItemView: View {
                     }
                 }
                 Divider()
-                Button(window.isPinned ? "Unpin from Taskbar" : "Pin to Taskbar") {
-                    onTogglePin?(window.id)
+                Button("Hide") {
+                    hideWindow(window)
+                    onTogglePin?(window.id) // Unpin when hiding
                 }
+            } preview: {
+                // Auto-pin when context menu appears
+                if !window.isPinned {
+                    DispatchQueue.main.async {
+                        onTogglePin?(window.id)
+                    }
+                }
+                return Rectangle().fill(Color.clear)
             }
         } else {
             WindowItemView(
@@ -146,14 +159,28 @@ struct TaskBarItemView: View {
         })
         
         if let axwindow = axwindow {
-            // Try to get the close button and press it
-            do {
-                if let closeButton: UIElement = try axwindow.attribute(.closeButton) {
-                    try closeButton.performAction(.press)
-                }
-            } catch {
-                print("Could not close window: \(error)")
+            if let closeButton: UIElement = try? axwindow.attribute(.closeButton) {
+                try? closeButton.performAction(.press)
             }
+        }
+    }
+    
+    private func hideWindow(_ window: Window) {
+        let app = Application.init(forProcessID: window.pid)
+        let windows = try! app?.windows()
+        
+        let axwindow = windows?.first(where: { w in
+            var cgWindowId = CGWindowID()
+            if (_AXUIElementGetWindow(w.element, &cgWindowId) != .success) {
+                print("cannot get CGWindow id (objc bridged call)")
+            } else {
+                return cgWindowId == window.id
+            }
+            return false
+        })
+        
+        if let axwindow = axwindow {
+            try? axwindow.setAttribute(.minimized, value: true)
         }
     }
 }
@@ -199,6 +226,10 @@ struct WindowItemView: View {
                 ForEach(grouped, id: \.id) { win in
                     Button(win.title ?? win.name) {
                         activateWindow(win)
+                        // Also pin the window when activated from context menu
+                        if !win.isPinned {
+                            onTogglePin?(win.id)
+                        }
                     }
                 }
                 Divider()
@@ -206,18 +237,28 @@ struct WindowItemView: View {
                     closeWindow(window)
                 }
                 Divider()
-                Button(window.isPinned ? "Unpin from Taskbar" : "Pin to Taskbar") {
-                    onTogglePin?(window.id)
+                Button("Hide") {
+                    hideWindow(window)
+                    onTogglePin?(window.id) // Unpin when hiding
                 }
             } else {
                 Button("Close Window") {
                     closeWindow(window)
                 }
                 Divider()
-                Button(window.isPinned ? "Unpin from Taskbar" : "Pin to Taskbar") {
+                Button("Hide") {
+                    hideWindow(window)
+                    onTogglePin?(window.id) // Unpin when hiding
+                }
+            }
+        } preview: {
+            // Auto-pin when context menu appears
+            if !window.isPinned {
+                DispatchQueue.main.async {
                     onTogglePin?(window.id)
                 }
             }
+            return Rectangle().fill(Color.clear)
         }
     }
     
@@ -278,6 +319,25 @@ struct WindowItemView: View {
             } catch {
                 print("Could not close window: \(error)")
             }
+        }
+    }
+    
+    private func hideWindow(_ window: Window) {
+        let app = Application.init(forProcessID: window.pid)
+        let windows = try! app?.windows()
+        
+        let axwindow = windows?.first(where: { w in
+            var cgWindowId = CGWindowID()
+            if (_AXUIElementGetWindow(w.element, &cgWindowId) != .success) {
+                print("cannot get CGWindow id (objc bridged call)")
+            } else {
+                return cgWindowId == window.id
+            }
+            return false
+        })
+        
+        if let axwindow = axwindow {
+            try? axwindow.setAttribute(.minimized, value: true)
         }
     }
 }
