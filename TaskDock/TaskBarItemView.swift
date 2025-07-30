@@ -15,9 +15,9 @@ struct TaskBarItemView: View {
     let activeWindowId: CGWindowID
     let recentWindowIds: [CGWindowID]
     let onActivateWindow: ((CGWindowID) -> Void)?
-    let onTogglePin: ((String) -> Void)?
+    let onTogglePin: ((CGWindowID) -> Void)?
     
-    init(window: Window, groupedWindows: [Window]? = nil, isActive: Bool = false, activeWindowId: CGWindowID = 0, recentWindowIds: [CGWindowID] = [], onActivateWindow: ((CGWindowID) -> Void)? = nil, onTogglePin: ((String) -> Void)? = nil) {
+    init(window: Window, groupedWindows: [Window]? = nil, isActive: Bool = false, activeWindowId: CGWindowID = 0, recentWindowIds: [CGWindowID] = [], onActivateWindow: ((CGWindowID) -> Void)? = nil, onTogglePin: ((CGWindowID) -> Void)? = nil) {
         self.window = window
         self.groupedWindows = groupedWindows
         self.isActive = isActive
@@ -91,7 +91,7 @@ struct TaskBarItemView: View {
                 }
                 Divider()
                 Button(window.isPinned ? "Unpin from Taskbar" : "Pin to Taskbar") {
-                    onTogglePin?(window.bundleId)
+                    onTogglePin?(window.id)
                 }
             }
         } else {
@@ -164,9 +164,9 @@ struct WindowItemView: View {
     let isActive: Bool
     let groupedWindows: [Window]?
     let onActivateWindow: ((CGWindowID) -> Void)?
-    let onTogglePin: ((String) -> Void)?
+    let onTogglePin: ((CGWindowID) -> Void)?
     
-    init(window: Window, icon: NSImage? = nil, isActive: Bool = false, groupedWindows: [Window]? = nil, onActivateWindow: ((CGWindowID) -> Void)? = nil, onTogglePin: ((String) -> Void)? = nil) {
+    init(window: Window, icon: NSImage? = nil, isActive: Bool = false, groupedWindows: [Window]? = nil, onActivateWindow: ((CGWindowID) -> Void)? = nil, onTogglePin: ((CGWindowID) -> Void)? = nil) {
         self.window = window
         self.icon = icon
         self.isActive = isActive
@@ -207,7 +207,7 @@ struct WindowItemView: View {
                 }
                 Divider()
                 Button(window.isPinned ? "Unpin from Taskbar" : "Pin to Taskbar") {
-                    onTogglePin?(window.bundleId)
+                    onTogglePin?(window.id)
                 }
             } else {
                 Button("Close Window") {
@@ -215,7 +215,7 @@ struct WindowItemView: View {
                 }
                 Divider()
                 Button(window.isPinned ? "Unpin from Taskbar" : "Pin to Taskbar") {
-                    onTogglePin?(window.bundleId)
+                    onTogglePin?(window.id)
                 }
             }
         }

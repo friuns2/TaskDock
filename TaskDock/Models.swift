@@ -78,7 +78,7 @@ class Window: Equatable {
         self.pid = pid
         self.bundleId = bundleId
         self.path = path
-        self.isPinned = PinnedWindowsManager.shared.isPinned(bundleId: bundleId)
+        self.isPinned = PinnedWindowsManager.shared.isPinned(windowId: id)
     }
     
     var id: CGWindowID
@@ -166,39 +166,40 @@ class PinnedWindowsManager {
     
     private init() {}
     
-    private var pinnedBundleIds: Set<String> {
+    private var pinnedWindowIds: Set<CGWindowID> {
         get {
-            let array = userDefaults.stringArray(forKey: pinnedWindowsKey) ?? []
-            return Set(array)
+            let array = userDefaults.array(forKey: pinnedWindowsKey) as? [NSNumber] ?? []
+            return Set(array.map { CGWindowID($0.uint32Value) })
         }
         set {
-            userDefaults.set(Array(newValue), forKey: pinnedWindowsKey)
+            let array = newValue.map { NSNumber(value: $0) }
+            userDefaults.set(array, forKey: pinnedWindowsKey)
         }
     }
     
-    func isPinned(bundleId: String) -> Bool {
-        return pinnedBundleIds.contains(bundleId)
+    func isPinned(windowId: CGWindowID) -> Bool {
+        return pinnedWindowIds.contains(windowId)
     }
     
-    func togglePin(bundleId: String) {
-        var current = pinnedBundleIds
-        if current.contains(bundleId) {
-            current.remove(bundleId)
+    func togglePin(windowId: CGWindowID) {
+        var current = pinnedWindowIds
+        if current.contains(windowId) {
+            current.remove(windowId)
         } else {
-            current.insert(bundleId)
+            current.insert(windowId)
         }
-        pinnedBundleIds = current
+        pinnedWindowIds = current
     }
     
-    func pin(bundleId: String) {
-        var current = pinnedBundleIds
-        current.insert(bundleId)
-        pinnedBundleIds = current
+    func pin(windowId: CGWindowID) {
+        var current = pinnedWindowIds
+        current.insert(windowId)
+        pinnedWindowIds = current
     }
     
-    func unpin(bundleId: String) {
-        var current = pinnedBundleIds
-        current.remove(bundleId)
-        pinnedBundleIds = current
+    func unpin(windowId: CGWindowID) {
+        var current = pinnedWindowIds
+        current.remove(windowId)
+        pinnedWindowIds = current
     }
 }

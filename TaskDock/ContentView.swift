@@ -48,14 +48,12 @@ struct ContentView: View {
         recentWindowIds.insert(windowId, at: 0)
     }
     
-    private func handleTogglePin(_ bundleId: String) {
-        PinnedWindowsManager.shared.togglePin(bundleId: bundleId)
+    private func handleTogglePin(_ windowId: CGWindowID) {
+        PinnedWindowsManager.shared.togglePin(windowId: windowId)
         
-        // Update isPinned for all windows with this bundleId
-        space.windows.forEach { window in
-            if window.bundleId == bundleId {
-                window.isPinned = PinnedWindowsManager.shared.isPinned(bundleId: bundleId)
-            }
+        // Update isPinned for the specific window
+        if let window = space.windows.first(where: { $0.id == windowId }) {
+            window.isPinned = PinnedWindowsManager.shared.isPinned(windowId: windowId)
         }
     }
     
