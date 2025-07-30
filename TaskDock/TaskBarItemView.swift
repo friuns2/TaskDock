@@ -56,6 +56,7 @@ struct TaskBarItemView: View {
             .contextMenu {
                 ForEach(grouped, id: \.id) { win in
                     Button(win.title ?? win.name) {
+                        closeWindow(window)
                         activateWindow(win)
                     }
                 }
