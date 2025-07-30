@@ -32,6 +32,7 @@ struct ContentView: View {
     @State var draggingWindows: [Window]?
     @State private var activeWindowId: CGWindowID = 0
     @State private var recentWindowIds: [CGWindowID] = [] // Track recently active windows
+    @State private var pinnedBundleIds: Set<String> = [] // Track pinned applications
     
     var onShowMenu: (() -> Void)?
     var onChangeOrder: ((_ displayId: CGDirectDisplayID, _ spaceId: CGSSpaceID, _ updated: [CGWindowID]) -> Void)?
@@ -46,6 +47,28 @@ struct ContentView: View {
             recentWindowIds.remove(at: existingIndex)
         }
         recentWindowIds.insert(windowId, at: 0)
+    }
+    
+    private func togglePin(for bundleId: String) {
+        if pinnedBundleIds.contains(bundleId) {
+            pinnedBundleIds.remove(bundleId)
+        } else {
+            pinnedBundleIds.insert(bundleId)
+        }
+        // Save pinned state to UserDefaults
+        UserDefaults.standard.set(Array(pinnedBundleIds), forKey: "pinnedBundleIds")
+    }
+    
+    private func loadPinnedApps() {
+        if let saved = UserDefaults.standard.array(forKey: "pinnedBundleIds") as? [String] {
+            pinnedBundleIds = Set(saved)
+        }
+    }
+    
+    // Get pinned apps that don't have windows open
+    private var pinnedAppsWithoutWindows: [String] {
+        let activeBundleIds = Set(space.windows.map { $0.bundleId })
+        return pinnedBundleIds.filter { !activeBundleIds.contains($0) }
     }
     
     var body: some View {
@@ -66,6 +89,15 @@ struct ContentView: View {
             }.buttonStyle(.borderless).padding(8)
 
             HStack(spacing: 2) {
+                // Show pinned apps without windows first
+                ForEach(pinnedAppsWithoutWindows, id: \.self) { bundleId in
+                    PinnedAppView(
+                        bundleId: bundleId,
+                        onTogglePin: togglePin
+                    )
+                }
+                
+                // Show regular windows/apps
                 ForEach(draggingWindows ?? space.windows, id: \.id) { window in
                     let groupedWindows = (draggingWindows ?? space.windows).filter { $0.bundleId == window.bundleId }
                     if groupedWindows.first?.id == window.id {  // Only show first window of each group
@@ -75,7 +107,9 @@ struct ContentView: View {
                             isActive: window.id == activeWindowId,
                             activeWindowId: activeWindowId,
                             recentWindowIds: recentWindowIds,
-                            onActivateWindow: handleWindowActivation
+                            onActivateWindow: handleWindowActivation,
+                            isPinned: pinnedBundleIds.contains(window.bundleId),
+                            onTogglePin: togglePin
                         )
                             .onDrag({
                                 dragged = window
@@ -122,6 +156,7 @@ struct ContentView: View {
                 }
             }
             .onAppear {
+                loadPinnedApps()
                 // Start checking for active window
                 Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
                     if let frontmostApp = NSWorkspace.shared.frontmostApplication,
@@ -192,5 +227,78 @@ struct ReorderDropDelegate: DropDelegate {
         
         dragged = nil
         return true
+    }
+}
+
+struct PinnedAppView: View {
+    let bundleId: String
+    let onTogglePin: ((String) -> Void)?
+    
+    @State private var appIcon: NSImage?
+    @State private var appName: String = ""
+    
+    var body: some View {
+        Button(action: {
+            launchApp()
+        }) {
+            HStack(spacing: 4) {
+                if let icon = appIcon {
+                    Image(nsImage: icon)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 20, height: 20)
+                } else {
+                    Image(systemName: "app")
+                        .frame(width: 20, height: 20)
+                }
+                
+                if !appName.isEmpty {
+                    Text(appName)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .font(.caption)
+                }
+            }
+        }
+        .buttonStyle(.borderless)
+        .padding(EdgeInsets(top: 4, leading: 4, bottom: 4, trailing: 6))
+        .background(RoundedRectangle(cornerRadius: 6).fill(Color(NSColor.controlColor).opacity(0.7)))
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+        )
+        .contextMenu {
+            Button("Launch App") {
+                launchApp()
+            }
+            Divider()
+            Button("Unpin App") {
+                onTogglePin?(bundleId)
+            }
+        }
+        .onAppear {
+            loadAppInfo()
+        }
+    }
+    
+    private func loadAppInfo() {
+        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleId) else { return }
+        
+        // Get app name
+        if let bundle = Bundle(url: url) {
+            appName = bundle.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String ??
+                     bundle.object(forInfoDictionaryKey: "CFBundleName") as? String ??
+                     url.deletingPathExtension().lastPathComponent
+        }
+        
+        // Get app icon
+        appIcon = NSWorkspace.shared.icon(forFile: url.path)
+    }
+    
+    private func launchApp() {
+        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleId) else { return }
+        let config = NSWorkspace.OpenConfiguration()
+        config.activates = true
+        NSWorkspace.shared.openApplication(at: url, configuration: config) { _, _ in }
     }
 }

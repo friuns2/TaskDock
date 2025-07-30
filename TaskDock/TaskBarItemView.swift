@@ -15,14 +15,18 @@ struct TaskBarItemView: View {
     let activeWindowId: CGWindowID
     let recentWindowIds: [CGWindowID]
     let onActivateWindow: ((CGWindowID) -> Void)?
+    let isPinned: Bool
+    let onTogglePin: ((String) -> Void)?
     
-    init(window: Window, groupedWindows: [Window]? = nil, isActive: Bool = false, activeWindowId: CGWindowID = 0, recentWindowIds: [CGWindowID] = [], onActivateWindow: ((CGWindowID) -> Void)? = nil) {
+    init(window: Window, groupedWindows: [Window]? = nil, isActive: Bool = false, activeWindowId: CGWindowID = 0, recentWindowIds: [CGWindowID] = [], onActivateWindow: ((CGWindowID) -> Void)? = nil, isPinned: Bool = false, onTogglePin: ((String) -> Void)? = nil) {
         self.window = window
         self.groupedWindows = groupedWindows
         self.isActive = isActive
         self.activeWindowId = activeWindowId
         self.recentWindowIds = recentWindowIds
         self.onActivateWindow = onActivateWindow
+        self.isPinned = isPinned
+        self.onTogglePin = onTogglePin
     }
     
     private var recentWindows: [Window] {
@@ -39,12 +43,12 @@ struct TaskBarItemView: View {
             return lhsIndex < rhsIndex
         }
         
-        return Array(sorted.prefix(2))
+        return Array(sorted.prefix(1))
     }
     
     var body: some View {
         if let grouped = groupedWindows, grouped.count > 1 {
-            // Show last 2 active windows as separate clickable items
+            // Show last active window as separate clickable item
             HStack(spacing: 1) {
                 ForEach(recentWindows, id: \.id) { win in
                     WindowItemView(
@@ -63,6 +67,10 @@ struct TaskBarItemView: View {
                     }
                 }
                 Divider()
+                Button(isPinned ? "Unpin App" : "Pin App") {
+                    onTogglePin?(window.bundleId)
+                }
+                Divider()
                 ForEach(grouped, id: \.id) { win in
                     Button("Close \(win.title ?? win.name)") {
                         closeWindow(win)
@@ -78,6 +86,19 @@ struct TaskBarItemView: View {
                 groupedWindows: groupedWindows,
                 onActivateWindow: onActivateWindow
             )
+            .contextMenu {
+                Button("Activate") {
+                    activateWindow(window)
+                }
+                Divider()
+                Button(isPinned ? "Unpin App" : "Pin App") {
+                    onTogglePin?(window.bundleId)
+                }
+                Divider()
+                Button("Close Window") {
+                    closeWindow(window)
+                }
+            }
         }
     }
     
