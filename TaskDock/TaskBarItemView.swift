@@ -17,8 +17,10 @@ struct TaskBarItemView: View {
     let onActivateWindow: ((CGWindowID) -> Void)?
     let isPinned: Bool
     let onTogglePin: ((String) -> Void)?
+    let pinnedWindowIds: Set<CGWindowID>
+    let onToggleWindowPin: ((CGWindowID) -> Void)?
     
-    init(window: Window, groupedWindows: [Window]? = nil, isActive: Bool = false, activeWindowId: CGWindowID = 0, recentWindowIds: [CGWindowID] = [], onActivateWindow: ((CGWindowID) -> Void)? = nil, isPinned: Bool = false, onTogglePin: ((String) -> Void)? = nil) {
+    init(window: Window, groupedWindows: [Window]? = nil, isActive: Bool = false, activeWindowId: CGWindowID = 0, recentWindowIds: [CGWindowID] = [], onActivateWindow: ((CGWindowID) -> Void)? = nil, isPinned: Bool = false, onTogglePin: ((String) -> Void)? = nil, pinnedWindowIds: Set<CGWindowID> = [], onToggleWindowPin: ((CGWindowID) -> Void)? = nil) {
         self.window = window
         self.groupedWindows = groupedWindows
         self.isActive = isActive
@@ -27,6 +29,8 @@ struct TaskBarItemView: View {
         self.onActivateWindow = onActivateWindow
         self.isPinned = isPinned
         self.onTogglePin = onTogglePin
+        self.pinnedWindowIds = pinnedWindowIds
+        self.onToggleWindowPin = onToggleWindowPin
     }
     
     private var recentWindows: [Window] {
@@ -56,7 +60,9 @@ struct TaskBarItemView: View {
                         icon: window.icon,
                         isActive: win.id == activeWindowId,
                         groupedWindows: grouped,
-                        onActivateWindow: onActivateWindow
+                        onActivateWindow: onActivateWindow,
+                        pinnedWindowIds: pinnedWindowIds,
+                        onToggleWindowPin: onToggleWindowPin
                     )
                 }
             }
@@ -72,6 +78,13 @@ struct TaskBarItemView: View {
                 }
                 Divider()
                 ForEach(grouped, id: \.id) { win in
+                    let isWindowPinned = pinnedWindowIds.contains(win.id)
+                    Button((isWindowPinned ? "Unpin " : "Pin ") + "Window: \(win.title ?? win.name)") {
+                        onToggleWindowPin?(win.id)
+                    }
+                }
+                Divider()
+                ForEach(grouped, id: \.id) { win in
                     Button("Close \(win.title ?? win.name)") {
                         closeWindow(win)
                     }
@@ -84,7 +97,9 @@ struct TaskBarItemView: View {
                 icon: window.icon,
                 isActive: isActive,
                 groupedWindows: groupedWindows,
-                onActivateWindow: onActivateWindow
+                onActivateWindow: onActivateWindow,
+                pinnedWindowIds: pinnedWindowIds,
+                onToggleWindowPin: onToggleWindowPin
             )
             .contextMenu {
                 Button("Activate") {
@@ -93,6 +108,10 @@ struct TaskBarItemView: View {
                 Divider()
                 Button(isPinned ? "Unpin App" : "Pin App") {
                     onTogglePin?(window.bundleId)
+                }
+                let isWindowPinned = pinnedWindowIds.contains(window.id)
+                Button(isWindowPinned ? "Unpin Window" : "Pin Window") {
+                    onToggleWindowPin?(window.id)
                 }
                 Divider()
                 Button("Close Window") {
@@ -160,13 +179,17 @@ struct WindowItemView: View {
     let isActive: Bool
     let groupedWindows: [Window]?
     let onActivateWindow: ((CGWindowID) -> Void)?
+    let pinnedWindowIds: Set<CGWindowID>
+    let onToggleWindowPin: ((CGWindowID) -> Void)?
     
-    init(window: Window, icon: NSImage? = nil, isActive: Bool = false, groupedWindows: [Window]? = nil, onActivateWindow: ((CGWindowID) -> Void)? = nil) {
+    init(window: Window, icon: NSImage? = nil, isActive: Bool = false, groupedWindows: [Window]? = nil, onActivateWindow: ((CGWindowID) -> Void)? = nil, pinnedWindowIds: Set<CGWindowID> = [], onToggleWindowPin: ((CGWindowID) -> Void)? = nil) {
         self.window = window
         self.icon = icon
         self.isActive = isActive
         self.groupedWindows = groupedWindows
         self.onActivateWindow = onActivateWindow
+        self.pinnedWindowIds = pinnedWindowIds
+        self.onToggleWindowPin = onToggleWindowPin
     }
     
     var body: some View {
@@ -196,10 +219,20 @@ struct WindowItemView: View {
                     }
                 }
                 Divider()
+                let isWindowPinned = pinnedWindowIds.contains(window.id)
+                Button(isWindowPinned ? "Unpin Window" : "Pin Window") {
+                    onToggleWindowPin?(window.id)
+                }
+                Divider()
                 Button("Close Window") {
                     closeWindow(window)
                 }
             } else {
+                let isWindowPinned = pinnedWindowIds.contains(window.id)
+                Button(isWindowPinned ? "Unpin Window" : "Pin Window") {
+                    onToggleWindowPin?(window.id)
+                }
+                Divider()
                 Button("Close Window") {
                     closeWindow(window)
                 }

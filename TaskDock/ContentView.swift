@@ -33,6 +33,7 @@ struct ContentView: View {
     @State private var activeWindowId: CGWindowID = 0
     @State private var recentWindowIds: [CGWindowID] = [] // Track recently active windows
     @State private var pinnedBundleIds: Set<String> = [] // Track pinned applications
+    @State private var pinnedWindowIds: Set<CGWindowID> = [] // Track pinned individual windows
     
     var onShowMenu: (() -> Void)?
     var onChangeOrder: ((_ displayId: CGDirectDisplayID, _ spaceId: CGSSpaceID, _ updated: [CGWindowID]) -> Void)?
@@ -59,9 +60,22 @@ struct ContentView: View {
         UserDefaults.standard.set(Array(pinnedBundleIds), forKey: "pinnedBundleIds")
     }
     
+    private func toggleWindowPin(for windowId: CGWindowID) {
+        if pinnedWindowIds.contains(windowId) {
+            pinnedWindowIds.remove(windowId)
+        } else {
+            pinnedWindowIds.insert(windowId)
+        }
+        // Save pinned window state to UserDefaults
+        UserDefaults.standard.set(Array(pinnedWindowIds), forKey: "pinnedWindowIds")
+    }
+    
     private func loadPinnedApps() {
         if let saved = UserDefaults.standard.array(forKey: "pinnedBundleIds") as? [String] {
             pinnedBundleIds = Set(saved)
+        }
+        if let savedWindows = UserDefaults.standard.array(forKey: "pinnedWindowIds") as? [CGWindowID] {
+            pinnedWindowIds = Set(savedWindows)
         }
     }
     
@@ -69,6 +83,11 @@ struct ContentView: View {
     private var pinnedAppsWithoutWindows: [String] {
         let activeBundleIds = Set(space.windows.map { $0.bundleId })
         return pinnedBundleIds.filter { !activeBundleIds.contains($0) }
+    }
+    
+    // Get pinned windows that are currently available
+    private var pinnedWindows: [Window] {
+        return space.windows.filter { pinnedWindowIds.contains($0.id) }
     }
     
     var body: some View {
@@ -97,6 +116,19 @@ struct ContentView: View {
                     )
                 }
                 
+                // Show pinned windows that don't have regular grouped representation
+                ForEach(pinnedWindows, id: \.id) { window in
+                    let hasGroupRepresentation = space.windows.filter { $0.bundleId == window.bundleId }.first?.id == window.id
+                    if !hasGroupRepresentation {
+                        PinnedWindowView(
+                            window: window,
+                            isActive: window.id == activeWindowId,
+                            onActivateWindow: handleWindowActivation,
+                            onToggleWindowPin: toggleWindowPin
+                        )
+                    }
+                }
+                
                 // Show regular windows/apps
                 ForEach(draggingWindows ?? space.windows, id: \.id) { window in
                     let groupedWindows = (draggingWindows ?? space.windows).filter { $0.bundleId == window.bundleId }
@@ -109,7 +141,9 @@ struct ContentView: View {
                             recentWindowIds: recentWindowIds,
                             onActivateWindow: handleWindowActivation,
                             isPinned: pinnedBundleIds.contains(window.bundleId),
-                            onTogglePin: togglePin
+                            onTogglePin: togglePin,
+                            pinnedWindowIds: pinnedWindowIds,
+                            onToggleWindowPin: toggleWindowPin
                         )
                             .onDrag({
                                 dragged = window
@@ -300,5 +334,59 @@ struct PinnedAppView: View {
         let config = NSWorkspace.OpenConfiguration()
         config.activates = true
         NSWorkspace.shared.openApplication(at: url, configuration: config) { _, _ in }
+    }
+}
+
+struct PinnedWindowView: View {
+    let window: Window
+    let isActive: Bool
+    let onActivateWindow: ((CGWindowID) -> Void)?
+    let onToggleWindowPin: ((CGWindowID) -> Void)?
+    
+    private func truncatedTitle(_ title: String) -> String {
+        let maxLength = 60
+        if title.count > maxLength {
+            return String(title.prefix(maxLength - 3)) + "..."
+        }
+        return title
+    }
+    
+    var body: some View {
+        Button(action: {
+            onActivateWindow?(window.id)
+        }) {
+            HStack(spacing: 4) {
+                if let icon = window.icon {
+                    Image(nsImage: icon)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 20, height: 20)
+                } else {
+                    Image(systemName: "app")
+                        .frame(width: 20, height: 20)
+                }
+                
+                Text(truncatedTitle(window.title ?? window.name))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .font(.caption)
+            }
+        }
+        .buttonStyle(.borderless)
+        .padding(EdgeInsets(top: 4, leading: 4, bottom: 4, trailing: 6))
+        .background(RoundedRectangle(cornerRadius: 6).fill(isActive ? Color(NSColor.selectedControlColor).opacity(0.8) : Color(NSColor.controlColor).opacity(0.5)))
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .stroke(isActive ? Color.blue.opacity(0.7) : Color.gray.opacity(0.3), lineWidth: 1)
+        )
+        .contextMenu {
+            Button("Activate Window") {
+                onActivateWindow?(window.id)
+            }
+            Divider()
+            Button("Unpin Window") {
+                onToggleWindowPin?(window.id)
+            }
+        }
     }
 }
