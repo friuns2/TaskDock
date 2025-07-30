@@ -46,11 +46,6 @@ struct ContentView: View {
             recentWindowIds.remove(at: existingIndex)
         }
         recentWindowIds.insert(windowId, at: 0)
-        
-        // Keep only last 10 for efficiency
-        if recentWindowIds.count > 10 {
-            recentWindowIds = Array(recentWindowIds.prefix(10))
-        }
     }
     
     var body: some View {
