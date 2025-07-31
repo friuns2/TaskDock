@@ -94,8 +94,8 @@ struct TaskBarItemView: View {
                     }
                 }
                 Divider()
-                Button("Unpin") {
-                    onTogglePin?(window.id) // Just unpin, don't minimize
+                Button(window.isPinned ? "Unpin from Taskbar" : "Pin to Taskbar") {
+                    onTogglePin?(window.id)
                 }
             } preview: {
                 // Auto-pin when context menu appears
@@ -236,16 +236,16 @@ struct WindowItemView: View {
                     closeWindow(window)
                 }
                 Divider()
-                Button("Unpin") {
-                    onTogglePin?(window.id) // Just unpin, don't minimize
+                Button(window.isPinned ? "Unpin from Taskbar" : "Pin to Taskbar") {
+                    onTogglePin?(window.id)
                 }
             } else {
                 Button("Close Window") {
                     closeWindow(window)
                 }
                 Divider()
-                Button("Unpin") {
-                    onTogglePin?(window.id) // Just unpin, don't minimize
+                Button(window.isPinned ? "Unpin from Taskbar" : "Pin to Taskbar") {
+                    onTogglePin?(window.id)
                 }
             }
         } preview: {
