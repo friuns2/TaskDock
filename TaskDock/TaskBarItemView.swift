@@ -72,9 +72,10 @@ struct TaskBarItemView: View {
                         icon: window.icon,
                         isActive: win.id == activeWindowId,
                         groupedWindows: grouped,
+                        activeWindowId: activeWindowId,
+                        recentWindowIds: recentWindowIds,
                         onActivateWindow: onActivateWindow,
-                        onTogglePin: onTogglePin,
-                        recentWindowIds: recentWindowIds
+                        onTogglePin: onTogglePin
                     )
                 }
             }
@@ -113,9 +114,10 @@ struct TaskBarItemView: View {
                 icon: window.icon,
                 isActive: isActive,
                 groupedWindows: groupedWindows,
+                activeWindowId: activeWindowId,
+                recentWindowIds: recentWindowIds,
                 onActivateWindow: onActivateWindow,
-                onTogglePin: onTogglePin,
-                recentWindowIds: recentWindowIds
+                onTogglePin: onTogglePin
             )
         }
     }
@@ -165,6 +167,25 @@ struct TaskBarItemView: View {
             }
         }
     }
+    
+    private func hideWindow(_ window: Window) {
+        let app = Application.init(forProcessID: window.pid)
+        let windows = try! app?.windows()
+        
+        let axwindow = windows?.first(where: { w in
+            var cgWindowId = CGWindowID()
+            if (_AXUIElementGetWindow(w.element, &cgWindowId) != .success) {
+                print("cannot get CGWindow id (objc bridged call)")
+            } else {
+                return cgWindowId == window.id
+            }
+            return false
+        })
+        
+        if let axwindow = axwindow {
+            try? axwindow.setAttribute(.minimized, value: true)
+        }
+    }
 }
 
 struct WindowItemView: View {
@@ -172,18 +193,54 @@ struct WindowItemView: View {
     let icon: NSImage?
     let isActive: Bool
     let groupedWindows: [Window]?
+    let activeWindowId: CGWindowID
+    let recentWindowIds: [CGWindowID]
     let onActivateWindow: ((CGWindowID) -> Void)?
     let onTogglePin: ((CGWindowID) -> Void)?
-    let recentWindowIds: [CGWindowID]
     
-    init(window: Window, icon: NSImage? = nil, isActive: Bool = false, groupedWindows: [Window]? = nil, onActivateWindow: ((CGWindowID) -> Void)? = nil, onTogglePin: ((CGWindowID) -> Void)? = nil, recentWindowIds: [CGWindowID] = []) {
+    init(window: Window, icon: NSImage? = nil, isActive: Bool = false, groupedWindows: [Window]? = nil, activeWindowId: CGWindowID = 0, recentWindowIds: [CGWindowID] = [], onActivateWindow: ((CGWindowID) -> Void)? = nil, onTogglePin: ((CGWindowID) -> Void)? = nil) {
         self.window = window
         self.icon = icon
         self.isActive = isActive
         self.groupedWindows = groupedWindows
+        self.activeWindowId = activeWindowId
+        self.recentWindowIds = recentWindowIds
         self.onActivateWindow = onActivateWindow
         self.onTogglePin = onTogglePin
-        self.recentWindowIds = recentWindowIds
+    }
+    
+    private func activateWindowById(_ windowId: CGWindowID) {
+        // Get all windows on screen to find the target window
+        if let windowList = CGWindowListCopyWindowInfo(.optionOnScreenOnly, kCGNullWindowID) as? [[String: Any]] {
+            for windowInfo in windowList {
+                if let windowNumber = windowInfo[kCGWindowNumber as String] as? CGWindowID,
+                   windowNumber == windowId,
+                   let ownerPID = windowInfo[kCGWindowOwnerPID as String] as? pid_t {
+                    
+                    let nsapp = NSRunningApplication(processIdentifier: ownerPID)
+                    let app = Application.init(forProcessID: ownerPID)
+                    let windows = try? app?.windows()
+                    
+                    let axwindow = windows?.first(where: { w in
+                        var cgWindowId = CGWindowID()
+                        if (_AXUIElementGetWindow(w.element, &cgWindowId) != .success) {
+                            return false
+                        }
+                        return cgWindowId == windowId
+                    })
+                    
+                    if let axwindow = axwindow {
+                        nsapp?.activate()
+                        try? axwindow.performAction(.raise)
+                        try? axwindow.setAttribute(.focused, value: kCFBooleanTrue)
+                        onActivateWindow?(windowId)
+                    } else {
+                        nsapp?.activate(options: .activateAllWindows)
+                    }
+                    return
+                }
+            }
+        }
     }
     
     var body: some View {
@@ -203,30 +260,22 @@ struct WindowItemView: View {
                 .stroke(isActive ? Color.blue.opacity(0.5) : Color.clear, lineWidth: 1)
         )
         .onTapGesture {
-            if isActive {
-                // Find the previously active window from the same group
-                if let grouped = groupedWindows, grouped.count > 1 {
-                    let currentAppWindows = grouped.map { $0.id }
-                    let previousWindowId = recentWindowIds.first(where: { id in
-                        id != window.id && currentAppWindows.contains(id)
-                    })
-                    
-                    if let prevId = previousWindowId {
-                        onActivateWindow?(prevId)
-                    } else {
-                        // If no previous window in the group, activate the current app (all windows)
-                        let nsapp = NSRunningApplication(processIdentifier: window.pid)
-                        nsapp?.activate(options: .activateAllWindows)
-                        onActivateWindow?(window.id)
-                    }
+            // If the clicked window is already active, activate the previous window
+            if window.id == activeWindowId && recentWindowIds.count > 1 {
+                // Find the previous window (second in the recent list)
+                let previousWindowId = recentWindowIds[1]
+                
+                // Find the window object for the previous window ID
+                if let grouped = groupedWindows,
+                   let previousWindow = grouped.first(where: { $0.id == previousWindowId }) {
+                    activateWindow(previousWindow)
                 } else {
-                    // If it's the only window, activate the app (all windows)
-                    let nsapp = NSRunningApplication(processIdentifier: window.pid)
-                    nsapp?.activate(options: .activateAllWindows)
-                    onActivateWindow?(window.id)
+                    // If previous window not in current group, use the general activation method
+                    activateWindowById(previousWindowId)
                 }
             } else {
-                onActivateWindow?(window.id)
+                // Normal activation for non-active windows
+                activateWindow(window)
             }
         }
         .contextMenu {
@@ -269,7 +318,7 @@ struct WindowItemView: View {
     }
     
     private func truncatedTitle(_ title: String) -> String {
-        let maxLength = 20
+        let maxLength = 60
         if title.count > maxLength {
             return String(title.prefix(maxLength - 3)) + "..."
         }
@@ -325,6 +374,25 @@ struct WindowItemView: View {
             } catch {
                 print("Could not close window: \(error)")
             }
+        }
+    }
+    
+    private func hideWindow(_ window: Window) {
+        let app = Application.init(forProcessID: window.pid)
+        let windows = try! app?.windows()
+        
+        let axwindow = windows?.first(where: { w in
+            var cgWindowId = CGWindowID()
+            if (_AXUIElementGetWindow(w.element, &cgWindowId) != .success) {
+                print("cannot get CGWindow id (objc bridged call)")
+            } else {
+                return cgWindowId == window.id
+            }
+            return false
+        })
+        
+        if let axwindow = axwindow {
+            try? axwindow.setAttribute(.minimized, value: true)
         }
     }
 }
