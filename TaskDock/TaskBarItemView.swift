@@ -186,6 +186,23 @@ struct TaskBarItemView: View {
             try? axwindow.setAttribute(.minimized, value: true)
         }
     }
+    
+    private func minimizeWindow(_ window: Window) {
+        let app = Application.init(forProcessID: window.pid)
+        let windows = try! app?.windows()
+        
+        let axwindow = windows?.first(where: { w in
+            var cgWindowId = CGWindowID()
+            if (_AXUIElementGetWindow(w.element, &cgWindowId) != .success) {
+                return false
+            }
+            return cgWindowId == window.id
+        })
+        
+        if let axwindow = axwindow {
+            try? axwindow.setAttribute(.minimized, value: true)
+        }
+    }
 }
 
 struct WindowItemView: View {
@@ -293,6 +310,9 @@ struct WindowItemView: View {
                 Button("Close Window") {
                     closeWindow(window)
                 }
+                Button("Minimize Window") {
+                    minimizeWindow(window)
+                }
                 Divider()
                 Button(window.isPinned ? "Unpin from Taskbar" : "Pin to Taskbar") {
                     onTogglePin?(window.id)
@@ -300,6 +320,9 @@ struct WindowItemView: View {
             } else {
                 Button("Close Window") {
                     closeWindow(window)
+                }
+                Button("Minimize Window") {
+                    minimizeWindow(window)
                 }
                 Divider()
                 Button(window.isPinned ? "Unpin from Taskbar" : "Pin to Taskbar") {
@@ -389,6 +412,23 @@ struct WindowItemView: View {
                 return cgWindowId == window.id
             }
             return false
+        })
+        
+        if let axwindow = axwindow {
+            try? axwindow.setAttribute(.minimized, value: true)
+        }
+    }
+    
+    private func minimizeWindow(_ window: Window) {
+        let app = Application.init(forProcessID: window.pid)
+        let windows = try! app?.windows()
+        
+        let axwindow = windows?.first(where: { w in
+            var cgWindowId = CGWindowID()
+            if (_AXUIElementGetWindow(w.element, &cgWindowId) != .success) {
+                return false
+            }
+            return cgWindowId == window.id
         })
         
         if let axwindow = axwindow {
