@@ -8,6 +8,19 @@
 import AXSwift
 import SwiftUI
 
+private func reverseByLongDash(_ title: String) -> String {
+    for dash in ["—", "–"] {
+        if title.contains(dash) {
+            let parts = title.components(separatedBy: dash)
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            if parts.count > 1 {
+                return parts.reversed().joined(separator: " \(dash) ")
+            }
+        }
+    }
+    return title
+}
+
 struct TaskBarItemView: View {
     let window: Window
     let groupedWindows: [Window]?
@@ -81,7 +94,7 @@ struct TaskBarItemView: View {
             }
             .contextMenu {
                 ForEach(grouped, id: \.id) { win in
-                    Button(win.title ?? win.name) {
+                    Button(reverseByLongDash(win.title ?? win.name)) {
                         activateWindow(win)
                         // Also pin the window when activated from context menu
                         if !win.isPinned {
@@ -91,7 +104,7 @@ struct TaskBarItemView: View {
                 }
                 Divider()
                 ForEach(grouped, id: \.id) { win in
-                    Button("Close \(win.title ?? win.name)") {
+                    Button("Close \(reverseByLongDash(win.title ?? win.name))") {
                         closeWindow(win)
                     }
                 }
@@ -265,7 +278,7 @@ struct WindowItemView: View {
             if let icon = icon {
                 Image(nsImage: icon).resizable().frame(width: 16, height: 16)
             }
-            Text(truncatedTitle(window.title ?? window.name))
+            Text(truncatedTitle(reverseByLongDash(window.title ?? window.name)))
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .padding(.leading, -2)
@@ -298,7 +311,7 @@ struct WindowItemView: View {
         .contextMenu {
             if let grouped = groupedWindows, grouped.count > 1 {
                 ForEach(grouped, id: \.id) { win in
-                    Button(win.title ?? win.name) {
+                    Button(reverseByLongDash(win.title ?? win.name)) {
                         activateWindow(win)
                         // Also pin the window when activated from context menu
                         if !win.isPinned {
