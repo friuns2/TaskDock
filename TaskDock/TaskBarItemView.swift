@@ -283,6 +283,7 @@ struct WindowItemView: View {
                 .truncationMode(.tail)
                 .padding(.leading, -2)
         }
+        .fixedSize(horizontal: true, vertical: false)
         .padding(EdgeInsets(top: 4, leading: 4, bottom: 4, trailing: 6))
         .background(RoundedRectangle(cornerRadius: 6).fill(isActive ? Color(NSColor.selectedControlColor) : Color(NSColor.controlColor)))
         .overlay(
