@@ -76,33 +76,36 @@ struct ContentView: View {
 
             HStack(spacing: 2) {
                 ForEach(draggingWindows ?? space.windows, id: \.id) { window in
-                    TaskBarItemView(
-                        window: window,
-                        groupedWindows: nil,
-                        isActive: window.id == activeWindowId,
-                        activeWindowId: activeWindowId,
-                        recentWindowIds: recentWindowIds,
-                        onActivateWindow: handleWindowActivation,
-                        onTogglePin: handleTogglePin
-                    )
-                    .onDrag({
-                        dragged = window
-                        draggingWindows = [Window](space.windows)
-                        return NSItemProvider(object: String(window.id) as NSString)
-                    }, preview: {
-                        Rectangle().fill(Color.clear)
-                    })
-                    .onDrop(
-                        of: [UTType.plainText],
-                        delegate: ReorderDropDelegate(
-                            displayId: displayId,
-                            spaceId: space.id,
-                            item: window,
-                            onChangeOrder: onChangeOrder,
-                            data: $draggingWindows,
-                            dataa: $space.windows,
-                            dragged: $dragged)
-                    )
+                    let groupedWindows = (draggingWindows ?? space.windows).filter { $0.bundleId == window.bundleId }
+                    if groupedWindows.first?.id == window.id {  // Only show first window of each group
+                        TaskBarItemView(
+                            window: window, 
+                            groupedWindows: groupedWindows, 
+                            isActive: window.id == activeWindowId,
+                            activeWindowId: activeWindowId,
+                            recentWindowIds: recentWindowIds,
+                            onActivateWindow: handleWindowActivation,
+                            onTogglePin: handleTogglePin
+                        )
+                            .onDrag({
+                                dragged = window
+                                draggingWindows = [Window](space.windows)
+                                return NSItemProvider(object: String(window.id) as NSString)
+                            }, preview: {
+                                Rectangle().fill(Color.clear)
+                            })
+                            .onDrop(
+                                of: [UTType.plainText],
+                                delegate: ReorderDropDelegate(
+                                    displayId: displayId,
+                                    spaceId: space.id,
+                                    item: window,
+                                    onChangeOrder: onChangeOrder,
+                                    data: $draggingWindows,
+                                    dataa: $space.windows,
+                                    dragged: $dragged)
+                            )
+                    }
                 }
             }.padding(.horizontal, 8)
             

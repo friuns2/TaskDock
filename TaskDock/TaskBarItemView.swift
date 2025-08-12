@@ -281,9 +281,9 @@ struct WindowItemView: View {
             Text(truncatedTitle(reverseByLongDash(window.title ?? window.name)))
                 .lineLimit(1)
                 .truncationMode(.tail)
+                .fixedSize(horizontal: true, vertical: false)
                 .padding(.leading, -2)
         }
-        .fixedSize(horizontal: true, vertical: false)
         .padding(EdgeInsets(top: 4, leading: 4, bottom: 4, trailing: 6))
         .background(RoundedRectangle(cornerRadius: 6).fill(isActive ? Color(NSColor.selectedControlColor) : Color(NSColor.controlColor)))
         .overlay(
