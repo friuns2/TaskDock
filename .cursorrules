@@ -1,4 +1,4 @@
-userfull comands:
+remember build and restart:
    killall TaskDock
    xcodebuild -scheme TaskDock -configuration Debug build
    open /Users/igor/Library/Developer/Xcode/DerivedData/TaskDock-*/Build/Products/Debug/TaskDock.app
