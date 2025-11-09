@@ -45,34 +45,49 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func recreate() {
         let state = stateHandler.recreate()
         orderHandler.update(state: state)
-        
+
         // Remove existing
         dockWindows.forEach { displayId, dock in
             dock.window.close()
         }
-        
-        // Create a dock for each display
-        dockWindows = Dictionary(uniqueKeysWithValues: state.displays.map { displayId, display in
-            
+
+        let mainDisplayId = CGMainDisplayID()
+
+        // Create dock only for the main display with all windows from all displays
+        dockWindows = Dictionary(uniqueKeysWithValues: state.displays.filter { $0.key == mainDisplayId }.map { displayId, display in
+
             // Create dock using display frame for positioning
             let dock = DockWindow(screenFrame: display.frame)
-            
-            // Create view
-            let spaceId = CGSManagedDisplayGetCurrentSpace(CGSMainConnectionID(), display.uuid)
-            let space = display.spaces[spaceId] ?? Space(id: spaceId)
-            var view = ContentView(displayId: displayId, space: space)
+
+            // Create a combined space with all windows from all displays and all spaces
+            let combinedSpace = Space(id: 0) // Use 0 as a special ID for the combined space
+            state.displays.forEach { _, display in
+                display.spaces.forEach { _, space in
+                    combinedSpace.windows.append(contentsOf: space.windows)
+                }
+            }
+
+            var view = ContentView(displayId: displayId, space: combinedSpace)
             view.onShowMenu = { self.openMenu(on: display.frame) }
             view.onChangeOrder = { displayId, spaceId, updated in
-                self.orderHandler.move(displayId: displayId, spaceId: spaceId, updated: updated)
-                self.orderHandler.update(state: state)
-                guard let space = state.displays[displayId]?.spaces[spaceId] else { return }
-                view.spacePub.send(space)
+                // For combined space, we need special handling - this might be complex
+                // For now, we'll just refresh the combined space
+                let newState = self.stateHandler.refresh()
+                self.orderHandler.update(state: newState)
+
+                let newCombinedSpace = Space(id: 0)
+                newState.displays.forEach { _, display in
+                    display.spaces.forEach { _, space in
+                        newCombinedSpace.windows.append(contentsOf: space.windows)
+                    }
+                }
+                view.spacePub.send(newCombinedSpace)
             }
             dock.contentView = NSHostingView(rootView: view)
-            
+
             // Bring to front
             dock.orderFront(nil)
-            
+
             return (displayId, (window: dock, view: view))
         })
     }
@@ -80,19 +95,25 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func refresh() {
         let state = stateHandler.refresh()
         orderHandler.update(state: state)
-        
-        // Update each display's dock
+
+        // Update the main display's dock with all windows from all displays
         dockWindows.forEach { displayId, dock in
             let display = state.displays[displayId]!
-            let spaceId = CGSManagedDisplayGetCurrentSpace(CGSMainConnectionID(), display.uuid)
-            let space = display.spaces[spaceId] ?? Space(id: spaceId)
-            
-            // Trigger a resize on all windows if needed
-            space.windows.forEach { window in
+
+            // Create a combined space with all windows from all displays and all spaces
+            let combinedSpace = Space(id: 0) // Use 0 as a special ID for the combined space
+            state.displays.forEach { _, display in
+                display.spaces.forEach { _, space in
+                    combinedSpace.windows.append(contentsOf: space.windows)
+                }
+            }
+
+            // Trigger a resize on all windows if needed (using main display bounds)
+            combinedSpace.windows.forEach { window in
                 window.fixOverlap(screenY: display.bounds.origin.y, screenHeight: display.frame.height, dockHeight: dock.window.frame.height)
             }
-            
-            dock.view.spacePub.send(space)
+
+            dock.view.spacePub.send(combinedSpace)
         }
     }
     

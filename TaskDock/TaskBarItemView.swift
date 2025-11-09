@@ -227,6 +227,18 @@ struct WindowItemView: View {
     let recentWindowIds: [CGWindowID]
     let onActivateWindow: ((CGWindowID) -> Void)?
     let onTogglePin: ((CGWindowID) -> Void)?
+
+    private var displayNumber: Int {
+        // Get display number by finding the index in the list of displays
+        let displays = NSScreen.screens
+        for (index, screen) in displays.enumerated() {
+            if let displayId = screen.deviceDescription[NSDeviceDescriptionKey(rawValue: "NSScreenNumber")] as? CGDirectDisplayID,
+               displayId == window.displayId {
+                return index + 1 // Display numbers start from 1
+            }
+        }
+        return 1 // Fallback
+    }
     
     init(window: Window, icon: NSImage? = nil, isActive: Bool = false, groupedWindows: [Window]? = nil, activeWindowId: CGWindowID = 0, recentWindowIds: [CGWindowID] = [], onActivateWindow: ((CGWindowID) -> Void)? = nil, onTogglePin: ((CGWindowID) -> Void)? = nil) {
         self.window = window
@@ -278,11 +290,16 @@ struct WindowItemView: View {
             if let icon = icon {
                 Image(nsImage: icon).resizable().frame(width: 16, height: 16)
             }
-            Text(truncatedTitle(reverseByLongDash(window.title ?? window.name)))
-                .lineLimit(1)
-                .truncationMode(.tail)
-                .fixedSize(horizontal: true, vertical: false)
-                .padding(.leading, -2)
+            VStack(alignment: .leading, spacing: 0) {
+                Text(truncatedTitle(reverseByLongDash(window.title ?? window.name)))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                Text("Display \(displayNumber)")
+                    .font(.system(size: 8))
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+            }
+            .padding(.leading, -2)
         }
         .padding(EdgeInsets(top: 4, leading: 4, bottom: 4, trailing: 6))
         .background(RoundedRectangle(cornerRadius: 6).fill(isActive ? Color(NSColor.selectedControlColor) : Color(NSColor.controlColor)))
