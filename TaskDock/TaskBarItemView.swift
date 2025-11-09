@@ -227,7 +227,6 @@ struct WindowItemView: View {
     let recentWindowIds: [CGWindowID]
     let onActivateWindow: ((CGWindowID) -> Void)?
     let onTogglePin: ((CGWindowID) -> Void)?
-
     
     init(window: Window, icon: NSImage? = nil, isActive: Bool = false, groupedWindows: [Window]? = nil, activeWindowId: CGWindowID = 0, recentWindowIds: [CGWindowID] = [], onActivateWindow: ((CGWindowID) -> Void)? = nil, onTogglePin: ((CGWindowID) -> Void)? = nil) {
         self.window = window
