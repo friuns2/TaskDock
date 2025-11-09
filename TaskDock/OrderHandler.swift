@@ -40,13 +40,17 @@ class OrderHandler {
     
     public func move(displayId: CGDirectDisplayID, spaceId: CGSSpaceID, updated arr: [CGWindowID]) {
         guard var display = _stored[displayId] else { return }
-        
+
         var dict = [CGWindowID: Int]()
         arr.enumerated().forEach { (index, window) in
             dict[window]  = index
         }
-        
+
         display[spaceId] = (arr, dict)
         _stored[displayId] = display
+    }
+
+    public func getStoredOrder(displayId: CGDirectDisplayID, spaceId: CGSSpaceID) -> ([CGWindowID], [CGWindowID: Int])? {
+        return _stored[displayId]?[spaceId]
     }
 }

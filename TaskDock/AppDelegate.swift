@@ -60,27 +60,50 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             let dock = DockWindow(screenFrame: display.frame)
 
             // Create a combined space with all windows from all displays and all spaces
-            let combinedSpace = Space(id: 0) // Use 0 as a special ID for the combined space
+            let combinedSpaceId: CGSSpaceID = 999999 // Special ID for combined space
+            let combinedSpace = Space(id: combinedSpaceId)
             state.displays.forEach { _, display in
                 display.spaces.forEach { _, space in
                     combinedSpace.windows.append(contentsOf: space.windows)
                 }
             }
 
+            // Apply stored order if available
+            if let (orderedIds, _) = orderHandler.getStoredOrder(displayId: displayId, spaceId: combinedSpaceId) {
+                combinedSpace.windows.sort { lhs, rhs in
+                    let lhsIndex = orderedIds.firstIndex(of: lhs.id) ?? Int.max
+                    let rhsIndex = orderedIds.firstIndex(of: rhs.id) ?? Int.max
+                    return lhsIndex < rhsIndex
+                }
+            }
+
             var view = ContentView(displayId: displayId, space: combinedSpace)
             view.onShowMenu = { self.openMenu(on: display.frame) }
             view.onChangeOrder = { displayId, spaceId, updated in
-                // For combined space, we need special handling - this might be complex
-                // For now, we'll just refresh the combined space
+                // Use a special combined space ID for the aggregated view
+                let combinedSpaceId: CGSSpaceID = 999999 // Special ID for combined space
+                self.orderHandler.move(displayId: displayId, spaceId: combinedSpaceId, updated: updated)
+
+                // Refresh and apply the new order to the combined space
                 let newState = self.stateHandler.refresh()
                 self.orderHandler.update(state: newState)
 
-                let newCombinedSpace = Space(id: 0)
+                let newCombinedSpace = Space(id: combinedSpaceId)
                 newState.displays.forEach { _, display in
                     display.spaces.forEach { _, space in
                         newCombinedSpace.windows.append(contentsOf: space.windows)
                     }
                 }
+
+                // Apply the stored order to the combined space
+                if let (orderedIds, _) = self.orderHandler.getStoredOrder(displayId: displayId, spaceId: combinedSpaceId) {
+                    newCombinedSpace.windows.sort { lhs, rhs in
+                        let lhsIndex = orderedIds.firstIndex(of: lhs.id) ?? Int.max
+                        let rhsIndex = orderedIds.firstIndex(of: rhs.id) ?? Int.max
+                        return lhsIndex < rhsIndex
+                    }
+                }
+
                 view.spacePub.send(newCombinedSpace)
             }
             dock.contentView = NSHostingView(rootView: view)
@@ -101,10 +124,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             let display = state.displays[displayId]!
 
             // Create a combined space with all windows from all displays and all spaces
-            let combinedSpace = Space(id: 0) // Use 0 as a special ID for the combined space
+            let combinedSpaceId: CGSSpaceID = 999999 // Special ID for combined space
+            let combinedSpace = Space(id: combinedSpaceId)
             state.displays.forEach { _, display in
                 display.spaces.forEach { _, space in
                     combinedSpace.windows.append(contentsOf: space.windows)
+                }
+            }
+
+            // Apply stored order if available
+            if let (orderedIds, _) = orderHandler.getStoredOrder(displayId: displayId, spaceId: combinedSpaceId) {
+                combinedSpace.windows.sort { lhs, rhs in
+                    let lhsIndex = orderedIds.firstIndex(of: lhs.id) ?? Int.max
+                    let rhsIndex = orderedIds.firstIndex(of: rhs.id) ?? Int.max
+                    return lhsIndex < rhsIndex
                 }
             }
 
