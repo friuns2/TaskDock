@@ -2,6 +2,10 @@
 
 A macOS application that replicates the Windows taskbar functionality, providing an alternative dock experience for macOS users.
 
+## Screenshot
+
+![TaskDock Screenshot](screenshot.png)
+
 ## Features
 
 - Display running applications in a taskbar-like interface
